@@ -1,0 +1,128 @@
+.container {
+  max-width: 800px;
+}
+
+.title {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #fff;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inputGroup label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inputGroup input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.85rem;
+  border-radius: 4px;
+  color: white;
+  outline: none;
+}
+
+.inputGroup input:focus {
+  border-color: var(--primary);
+}
+
+.dropzone {
+  border: 2px dashed var(--border);
+  background: var(--surface);
+  padding: 4rem 2rem;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone:hover {
+  border-color: var(--primary);
+  background: rgba(225, 29, 72, 0.05);
+}
+
+.fileCount {
+  margin-top: 1rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.progressContainer {
+  background: var(--surface);
+  height: 40px;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--primary);
+  z-index: 1;
+  transition: width 0.3s ease;
+}
+
+.progressContainer span {
+  position: relative;
+  z-index: 2;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.submitBtn {
+  background: var(--primary);
+  color: white;
+  padding: 1.25rem;
+  border-radius: 4px;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.submitBtn:hover {
+  transform: translateY(-2px);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #ef4444;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

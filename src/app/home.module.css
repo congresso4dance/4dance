@@ -1,0 +1,163 @@
+.recentSection {
+  padding: 8rem 0;
+  background: var(--background);
+}
+
+.container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 4rem;
+}
+
+.sectionTitle {
+  font-size: 3rem;
+  color: #fff;
+}
+
+.viewAll {
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: var(--primary);
+  transform: translateY(-5px);
+}
+
+.cardImage {
+  aspect-ratio: 16 / 9;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder span {
+  font-size: 2.5rem;
+  font-family: var(--font-display);
+  font-weight: 900;
+  opacity: 0.1;
+  color: white;
+}
+
+.cardInfo {
+  padding: 1.5rem;
+}
+
+.date {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.cardInfo h3 {
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.authoritySection {
+  padding: 8rem 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.authGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 6rem;
+  align-items: center;
+}
+
+.tag {
+  color: var(--primary);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.authContent h2 {
+  font-size: 3.5rem;
+  margin-bottom: 2rem;
+  line-height: 1.1;
+}
+
+.authContent p {
+  font-size: 1.2rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 3rem;
+}
+
+.ctaBtn {
+  display: inline-block;
+  background: var(--primary);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.authStats {
+  display: flex;
+  gap: 4rem;
+}
+
+.stat h4 {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.stat p {
+  color: var(--primary);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  padding: 4rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+@media (max-width: 1024px) {
+  .authGrid {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+  }
+}
