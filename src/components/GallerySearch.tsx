@@ -96,9 +96,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
       }
 
       if (data && data.length > 0) {
-        setStatus("Verificando identidade com IA Generativa... 🧐");
-        
-        // Obter as URLs reais das fotos para o Gemini analisar
+        // Obter as URLs reais das fotos
         const photoIds = data.map((d: any) => d.photo_id);
         const { data: photoData } = await supabase
           .from('photos')
@@ -112,32 +110,47 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
           return;
         }
 
-        // Ordenar photoData de acordo com a ordem de similaridade do data
-        const candidates = photoIds
-          .map(id => photoData.find(p => p.id === id)?.full_res_url)
-          .filter(Boolean) as string[];
+        // TENTAR verificação com Gemini (IA Generativa)
+        try {
+          setStatus("Verificando identidade com IA Generativa... 🧐");
 
-        // Converter o File da selfie para Base64 para o Gemini
-        const referenceBase64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(image);
-        });
+          // Ordenar photoData de acordo com a ordem de similaridade
+          const candidates = photoIds
+            .map(id => photoData.find(p => p.id === id)?.full_res_url)
+            .filter(Boolean) as string[];
 
-        // SEGUNDO PASSO: Verificação de Elite com Gemini
-        const aiResult = await verifyFacesWithAI(referenceBase64, candidates);
+          // Converter o File da selfie para Base64 para o Gemini
+          const referenceBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(image);
+          });
 
-        if (aiResult.success && aiResult.matches && aiResult.matches.length > 0) {
-          // Filtrar apenas as fotos que o Gemini confirmou
-          const finalPhotoIds = photoData
-            .filter(p => aiResult.matches?.includes(p.full_res_url))
-            .map(p => p.id);
-            
-          onFilter(finalPhotoIds);
-          setStatus(`IA Confirmou ${finalPhotoIds.length} fotos suas! ✨`);
-        } else {
-          onFilter(null);
-          setStatus("Nenhuma foto confirmada com 100% de certeza pela IA.");
+          // SEGUNDO PASSO: Verificação de Elite com Gemini
+          const aiResult = await verifyFacesWithAI(referenceBase64, candidates);
+
+          if (aiResult.success && aiResult.matches && aiResult.matches.length > 0) {
+            // Filtrar apenas as fotos que o Gemini confirmou
+            const finalPhotoIds = photoData
+              .filter(p => aiResult.matches?.includes(p.full_res_url))
+              .map(p => p.id);
+              
+            onFilter(finalPhotoIds);
+            setStatus(`IA Confirmou ${finalPhotoIds.length} fotos suas! ✨`);
+          } else if (aiResult.success) {
+            // Gemini respondeu mas não achou matches - usar busca vetorial como fallback
+            console.warn("[Fallback] Gemini não confirmou nenhum match. Usando busca vetorial.");
+            onFilter(photoIds);
+            setStatus(`Encontramos ${photoIds.length} fotos similares (busca vetorial). 🔍`);
+          } else {
+            // Gemini falhou - usar busca vetorial como fallback
+            throw new Error(aiResult.error || "AI falhou");
+          }
+        } catch (aiError) {
+          // FALLBACK: Se o Gemini falhar por qualquer motivo, usar a busca vetorial pura
+          console.warn("[Fallback] Gemini indisponível. Usando busca vetorial pura:", aiError);
+          onFilter(photoIds);
+          setStatus(`Encontramos ${photoIds.length} fotos similares (busca inteligente). 🔍`);
         }
       } else {
         onFilter(null);
