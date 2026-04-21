@@ -102,7 +102,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         const photoIds = data.map((d: any) => d.photo_id);
         const { data: photoData } = await supabase
           .from('photos')
-          .select('id, thumbnail_url')
+          .select('id, full_res_url')
           .in('id', photoIds);
 
         if (!photoData || photoData.length === 0) {
@@ -114,7 +114,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
 
         // Ordenar photoData de acordo com a ordem de similaridade do data
         const candidates = photoIds
-          .map(id => photoData.find(p => p.id === id)?.thumbnail_url)
+          .map(id => photoData.find(p => p.id === id)?.full_res_url)
           .filter(Boolean) as string[];
 
         // Converter o File da selfie para Base64 para o Gemini
@@ -130,7 +130,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         if (aiResult.success && aiResult.matches && aiResult.matches.length > 0) {
           // Filtrar apenas as fotos que o Gemini confirmou
           const finalPhotoIds = photoData
-            .filter(p => aiResult.matches?.includes(p.thumbnail_url))
+            .filter(p => aiResult.matches?.includes(p.full_res_url))
             .map(p => p.id);
             
           onFilter(finalPhotoIds);

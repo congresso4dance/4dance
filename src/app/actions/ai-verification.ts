@@ -9,9 +9,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: string[]) {
   try {
     const apiKey = process.env.GOOGLE_AI_STUDIO_KEY;
+    
     if (!apiKey) {
-      console.error("GOOGLE_AI_STUDIO_KEY não configurada.");
-      return { success: false, error: "AI Key missing" };
+      console.error("ERRO CRÍTICO: GOOGLE_AI_STUDIO_KEY não encontrada no process.env");
+      // Fallback para log detalhado (sem expor a chave)
+      return { 
+        success: false, 
+        error: "Chave de IA não configurada no servidor. Por favor, verifique o arquivo .env.local e reinicie o servidor." 
+      };
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
