@@ -84,8 +84,8 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
 
       const { data, error } = await supabase.rpc('match_photo_faces', {
         query_embedding: embeddingString,
-        match_threshold: 0.75, // Reduzido de 0.85 para 0.75 para dar mais chance à IA visual
-        match_count: 20 // Pegar o Top 20 para verificação profunda
+        match_threshold: 0.80, // Equilíbrio: pega bastante resultado sem muita sujeira
+        match_count: 100 // Buscar até 100 candidatas para não perder nenhuma foto
       });
 
       if (error) {
@@ -169,10 +169,14 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
     setStatus("");
     onFilter(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
+
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className={styles.wrapper}>
+      {/* Input oculto: ENVIAR FOTO do rolo de câmera */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -181,16 +185,36 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         style={{ display: 'none' }} 
       />
 
+      {/* Input oculto: TIRAR SELFIE com câmera frontal */}
+      <input 
+        type="file" 
+        ref={cameraInputRef} 
+        onChange={handleFileUpload} 
+        accept="image/*" 
+        capture="user"
+        style={{ display: 'none' }} 
+      />
+
       <div className={styles.controls}>
         {!referenceDescriptor ? (
-          <button 
-            className={styles.searchBtn} 
-            onClick={() => fileInputRef.current?.click()} 
-            disabled={isScanning || !modelsLoaded}
-          >
-            <Camera size={20} />
-            {isScanning ? "Buscando..." : (modelsLoaded ? "Encontre-me (IA Beta)" : "Carregando IA...")}
-          </button>
+          <div className={styles.dualButtons}>
+            <button 
+              className={styles.searchBtn} 
+              onClick={() => cameraInputRef.current?.click()} 
+              disabled={isScanning || !modelsLoaded}
+            >
+              <Camera size={20} />
+              {isScanning ? "Buscando..." : (modelsLoaded ? "Tirar Selfie" : "Carregando IA...")}
+            </button>
+            <button 
+              className={styles.uploadBtn} 
+              onClick={() => fileInputRef.current?.click()} 
+              disabled={isScanning || !modelsLoaded}
+            >
+              <Upload size={20} />
+              {modelsLoaded ? "Enviar Foto" : "..."}
+            </button>
+          </div>
         ) : (
           <button className={styles.clearBtn} onClick={clearFilter}>
             <X size={16} /> Limpar Filtro
@@ -234,3 +258,4 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
     </div>
   );
 }
+
