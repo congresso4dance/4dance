@@ -84,7 +84,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
 
       const { data, error } = await supabase.rpc('match_photo_faces', {
         query_embedding: embeddingString,
-        match_threshold: 0.85, // Baixado para 0.85 para capturar candidatos para o Gemini
+        match_threshold: 0.75, // Reduzido de 0.85 para 0.75 para dar mais chance à IA visual
         match_count: 20 // Pegar o Top 20 para verificação profunda
       });
 
