@@ -2,60 +2,175 @@
   display: flex;
   min-height: 100vh;
   background: #000;
+  color: white;
 }
 
 .sidebar {
-  width: 250px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  width: 280px;
+  background: #050505;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
 }
 
 .sidebarHeader {
   padding: 2rem;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.logoBadge {
+  background: var(--primary);
+  color: black;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
 }
 
 .sidebarHeader h2 {
-  font-size: 1.2rem;
-  color: var(--primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 0;
+  color: white;
 }
 
 .nav {
-  padding: 1rem 0;
+  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
+  gap: 2rem;
   flex: 1;
+  overflow-y: auto;
 }
 
-.nav a {
-  padding: 1rem 2rem;
-  color: var(--muted);
-  font-weight: 600;
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.groupLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.1em;
+  padding-left: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.navLink {
+  padding: 0.75rem 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: white;
+}
+
+.navLink:hover .chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.chevron {
+  margin-left: auto;
+  opacity: 0;
+  transform: translateX(-10px);
   transition: all 0.2s ease;
-}
-
-.nav a:hover {
-  background: rgba(225, 29, 72, 0.05);
   color: var(--primary);
 }
 
 .sidebarFooter {
-  padding: 1rem 2rem;
-  border-top: 1px solid var(--border);
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.externalLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 1.5rem;
+  padding-left: 0.5rem;
+  transition: color 0.2s ease;
+}
+
+.externalLink:hover {
+  color: var(--primary);
+}
+
+.userProfile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #333, #111);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--primary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.userName {
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .userEmail {
-  font-size: 0.75rem;
-  color: var(--muted);
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .main {
   flex: 1;
-  padding: 3rem;
+  padding: 2.5rem;
   overflow-y: auto;
+  background: #000;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -64,5 +179,11 @@
   }
   .sidebar {
     width: 100%;
+    height: auto;
+    position: relative;
+  }
+  .nav {
+    display: none; /* Em mobile podemos usar um menu hambúrguer no futuro */
   }
 }
+

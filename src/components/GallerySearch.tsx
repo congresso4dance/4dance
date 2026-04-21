@@ -79,13 +79,22 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
     try {
       setStatus("Buscando fotos no servidor...");
       
-      // Convert Float32Array to PostgreSQL vector string format: [1, 2, 3...]
+      // 1. Fetch dynamic settings from DB
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'ai_config')
+        .single();
+      
+      const config = settingsData?.value || { match_threshold: 0.92, gemini_enabled: true, max_search_results: 100 };
+      
+      // Convert Float32Array to PostgreSQL vector string format
       const embeddingString = `[${Array.from(descriptor).join(',')}]`;
 
       const { data, error } = await supabase.rpc('match_photo_faces', {
         query_embedding: embeddingString,
-        match_threshold: 0.92, // Threshold de elite: precisão máxima conforme feedback do usuário
-        match_count: 100 // Buscar até 100 candidatas para não perder nenhuma foto
+        match_threshold: config.match_threshold,
+        match_count: config.max_search_results
       });
 
       if (error) {
@@ -95,12 +104,14 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         return;
       }
 
+      let success = false;
+      let resultCount = 0;
+
       if (data && data.length > 0) {
-        // Obter as URLs reais das fotos
         const photoIds = data.map((d: any) => d.photo_id);
         const { data: photoData } = await supabase
           .from('photos')
-          .select('id, full_res_url')
+          .select('id, full_res_url, event_id')
           .in('id', photoIds);
 
         if (!photoData || photoData.length === 0) {
@@ -110,51 +121,74 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
           return;
         }
 
+        const currentEventId = photoData[0].event_id;
+
         // TENTAR verificação com Gemini (IA Generativa)
         try {
-          setStatus("Verificando identidade com IA Generativa... 🧐");
+          if (config.gemini_enabled) {
+            setStatus("Verificando identidade com IA Generativa... 🧐");
 
-          // Ordenar photoData de acordo com a ordem de similaridade
-          const candidates = photoIds
-            .map(id => photoData.find(p => p.id === id)?.full_res_url)
-            .filter(Boolean) as string[];
+            const candidates = photoIds
+              .map(id => photoData.find(p => p.id === id)?.full_res_url)
+              .filter(Boolean) as string[];
 
-          // Converter o File da selfie para Base64 para o Gemini
-          const referenceBase64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(image);
-          });
+            const referenceBase64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(image);
+            });
 
-          // SEGUNDO PASSO: Verificação de Elite com Gemini
-          const aiResult = await verifyFacesWithAI(referenceBase64, candidates);
+            const aiResult = await verifyFacesWithAI(referenceBase64, candidates);
 
-          if (aiResult.success && aiResult.matches && aiResult.matches.length > 0) {
-            // Filtrar apenas as fotos que o Gemini confirmou
-            const finalPhotoIds = photoData
-              .filter(p => aiResult.matches?.includes(p.full_res_url))
-              .map(p => p.id);
-              
-            onFilter(finalPhotoIds);
-            setStatus(`IA Confirmou ${finalPhotoIds.length} fotos suas! ✨`);
-          } else if (aiResult.success) {
-            // Gemini respondeu mas não achou matches - usar busca vetorial como fallback
-            console.warn("[Fallback] Gemini não confirmou nenhum match. Usando busca vetorial.");
-            onFilter(photoIds);
-            setStatus(`Encontramos ${photoIds.length} fotos similares (busca vetorial). 🔍`);
+            if (aiResult.success && aiResult.matches && aiResult.matches.length > 0) {
+              const finalPhotoIds = photoData
+                .filter(p => aiResult.matches?.includes(p.full_res_url))
+                .map(p => p.id);
+                
+              onFilter(finalPhotoIds);
+              setStatus(`IA Confirmou ${finalPhotoIds.length} fotos suas! ✨`);
+              success = true;
+              resultCount = finalPhotoIds.length;
+            } else {
+              // Fallback to vector search
+              onFilter(photoIds);
+              setStatus(`Encontramos ${photoIds.length} fotos similares (busca vetorial). 🔍`);
+              success = true;
+              resultCount = photoIds.length;
+            }
           } else {
-            // Gemini falhou - usar busca vetorial como fallback
-            throw new Error(aiResult.error || "AI falhou");
+            // Gemini disabled - use vector search directly
+            onFilter(photoIds);
+            setStatus(`Busca instantânea concluída! Encontramos ${photoIds.length} fotos. 🔍`);
+            success = true;
+            resultCount = photoIds.length;
           }
         } catch (aiError) {
-          // FALLBACK: Se o Gemini falhar por qualquer motivo, usar a busca vetorial pura
-          console.warn("[Fallback] Gemini indisponível. Usando busca vetorial pura:", aiError);
+          // FALLBACK
           onFilter(photoIds);
-          setStatus(`Encontramos ${photoIds.length} fotos similares (busca inteligente). 🔍`);
+          setStatus(`Busca inteligente concluída com ${photoIds.length} fotos similares. 🔍`);
+          success = true;
+          resultCount = photoIds.length;
         }
+
+        // Log search (async)
+        supabase.from('search_logs').insert({
+          event_id: currentEventId,
+          success: success,
+          results_count: resultCount,
+          user_agent: navigator.userAgent
+        }).then();
+
       } else {
         onFilter(null);
         setStatus("Nenhuma foto encontrada com base nos seus traços.");
+        
+        // Log failed search
+        supabase.from('search_logs').insert({
+          success: false,
+          results_count: 0,
+          user_agent: navigator.userAgent
+        }).then();
       }
     } catch (err) {
       console.error("Search error:", err);

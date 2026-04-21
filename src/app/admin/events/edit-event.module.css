@@ -139,6 +139,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 1rem;
+  margin-bottom: 8rem; /* Space for bulk bar */
 }
 
 .photoCard {
@@ -148,6 +149,30 @@
   overflow: hidden;
   border: 2px solid transparent;
   transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.photoCard.selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.photoCard.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: #3b82f6;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  z-index: 10;
 }
 
 .photoCard.isCover {
@@ -213,6 +238,69 @@
   color: white;
 }
 
+.bulkActions {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 15, 15, 0.9);
+  backdrop-filter: blur(20px);
+  padding: 1rem 2rem;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  z-index: 1000;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translate(-50%, 100px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.bulkInfo {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+}
+
+.bulkBtns {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.bulkDeleteBtn {
+  background: #ef4444;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulkCancelBtn {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .formGrid { grid-template-columns: 1fr; }
+  .bulkActions {
+    width: 90%;
+    bottom: 1rem;
+    gap: 1rem;
+    padding: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
