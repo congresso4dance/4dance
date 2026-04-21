@@ -1,0 +1,68 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: #000;
+}
+
+.sidebar {
+  width: 250px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarHeader {
+  padding: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebarHeader h2 {
+  font-size: 1.2rem;
+  color: var(--primary);
+  margin: 0;
+}
+
+.nav {
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.nav a {
+  padding: 1rem 2rem;
+  color: var(--muted);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.nav a:hover {
+  background: rgba(225, 29, 72, 0.05);
+  color: var(--primary);
+}
+
+.sidebarFooter {
+  padding: 1rem 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.userEmail {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.main {
+  flex: 1;
+  padding: 3rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+  }
+}

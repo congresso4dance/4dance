@@ -1,0 +1,163 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 100px 2rem 6rem;
+}
+
+.header {
+  margin-bottom: 3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  font-family: var(--font-display);
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.header p {
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.infoBox {
+  background: rgba(225, 29, 72, 0.05);
+  border: 1px solid rgba(225, 29, 72, 0.2);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+.infoBox h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.infoBox ol {
+  color: var(--muted);
+  line-height: 1.8;
+  padding-left: 1.5rem;
+}
+
+.infoBox ol li strong {
+  color: #fff;
+}
+
+.form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2.5rem;
+  border-radius: 16px;
+  max-width: 800px;
+}
+
+.field {
+  margin-bottom: 2rem;
+}
+
+.field label {
+  display: block;
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.field select, 
+.field textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.field textarea {
+  font-family: monospace;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.field select:focus, 
+.field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.submitBtn {
+  width: 100%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #ff3385;
+  transform: translateY(-2px);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.progressOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.progressCard {
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  padding: 3rem;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(225, 29, 72, 0.2);
+}
+
+.progressStats {
+  display: flex;
+  justify-content: space-around;
+  margin: 2rem 0;
+  font-weight: 700;
+}
+
+.success { color: #00ff88; }
+.error { color: var(--primary); }
+
+.progressBar {
+  width: 100%;
+  height: 10px;
+  background: #111;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
