@@ -26,8 +26,8 @@ export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: 
     };
 
     // Buscar as imagens candidatas e converter para Base64
-    // Limitamos a 10 fotos para manter performance e custos baixos no free tier
-    const topCandidates = candidateUrls.slice(0, 10);
+    // Usamos o Top 20 completo vindo da busca vetorial
+    const topCandidates = candidateUrls.slice(0, 20);
     
     const candidateParts = await Promise.all(topCandidates.map(async (url) => {
       const response = await fetch(url);
@@ -41,16 +41,21 @@ export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: 
       };
     }));
 
-    const prompt = `Você é um especialista em reconhecimento facial de alta precisão. 
+    const prompt = `Você é um especialista em reconhecimento facial. 
 Compare a PRIMEIRA imagem enviada (REFERÊNCIA) com as outras imagens (CANDIDATAS). 
-Identifique quais das imagens candidatas contêm EXATAMENTE a mesma pessoa da referência. 
-Seja extremamente rigoroso. Se houver dúvida, não dê o match.
+Identifique quais das imagens candidatas contêm a mesma pessoa da referência. 
+
+Considere o seguinte:
+1. Ignore variações de iluminação, pose, acessórios (óculos, chapéus) ou expressões faciais (sorrisos, caretas).
+2. Foque em traços permanentes: formato dos olhos, nariz, distância entre as pupilas e estrutura do queixo.
+3. Se você identificar traços que confirmam ser a mesma pessoa com boa confiança, inclua no resultado.
+4. Rejeite apenas se tiver certeza de que se trata de OUTRA pessoa.
 
 Retorne APENAS um objeto JSON no seguinte formato:
 {"indices": [0, 2, 5]}
 
 Onde os números no array são a posição da imagem na lista de candidatas (começando do 0).
-Se nenhuma imagem for um match perfeito, retorne {"indices": []}.
+Se nenhuma imagem for um match plausível, retorne {"indices": []}.
 NÃO responda com nenhum texto, apenas o JSON puro.`;
 
     const result = await model.generateContent([prompt, referencePart, ...candidateParts]);
