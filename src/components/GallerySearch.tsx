@@ -84,7 +84,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
 
       const { data, error } = await supabase.rpc('match_photo_faces', {
         query_embedding: embeddingString,
-        match_threshold: 0.80, // Equilíbrio: pega bastante resultado sem muita sujeira
+        match_threshold: 0.92, // Threshold de elite: precisão máxima conforme feedback do usuário
         match_count: 100 // Buscar até 100 candidatas para não perder nenhuma foto
       });
 
