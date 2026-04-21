@@ -3,8 +3,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * Server Action para verificação de Elite usando Gemini 1.5 Flash.
+ * Server Action para verificação de Elite usando Gemini 2.0 Flash.
  * Realiza a conferência visual das fotos sugeridas pela busca vetorial.
+ * Inclui retry automático para lidar com rate limits (429).
  */
 export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: string[]) {
   try {
@@ -13,16 +14,14 @@ export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: 
     
     if (!apiKey) {
       console.error("ERRO CRÍTICO: Chave de IA não encontrada.");
-      console.log("Variáveis de ambiente disponíveis:", Object.keys(process.env).filter(k => !k.includes('KEY') && !k.includes('SECRET')));
-      
       return { 
         success: false, 
-        error: "Chave de IA não configurada. Verifique os logs do servidor para diagnóstico." 
+        error: "Chave de IA não configurada. Verifique o .env.local." 
       };
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // Preparar a selfie de referência
     const referencePart = {
@@ -33,9 +32,11 @@ export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: 
     };
 
     // Buscar as imagens candidatas e converter para Base64
-    // Usamos o Top 20 completo vindo da busca vetorial
-    const topCandidates = candidateUrls.slice(0, 20);
+    // Limitamos a 10 para reduzir consumo de tokens e evitar rate limit
+    const topCandidates = candidateUrls.slice(0, 10);
     
+    console.log(`[AI] Verificando ${topCandidates.length} candidatas com Gemini 2.0 Flash...`);
+
     const candidateParts = await Promise.all(topCandidates.map(async (url) => {
       const response = await fetch(url);
       const buffer = await response.arrayBuffer();
@@ -65,20 +66,43 @@ Onde os números no array são a posição da imagem na lista de candidatas (com
 Se nenhuma imagem for um match plausível, retorne {"indices": []}.
 NÃO responda com nenhum texto, apenas o JSON puro.`;
 
-    const result = await model.generateContent([prompt, referencePart, ...candidateParts]);
-    const responseText = result.response.text();
-    
-    // Tentar limpar a resposta caso o Gemini coloque markdown ```json
-    const cleanJson = responseText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
+    // Retry automático com backoff para lidar com rate limits (429)
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const result = await model.generateContent([prompt, referencePart, ...candidateParts]);
+        const responseText = result.response.text();
+        
+        console.log(`[AI] Resposta do Gemini (tentativa ${attempt}):`, responseText);
 
-    // Mapear os índices de volta para as URLs originais que deram match
-    const matchedUrls = parsed.indices.map((idx: number) => topCandidates[idx]);
+        // Tentar limpar a resposta caso o Gemini coloque markdown ```json
+        const cleanJson = responseText.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
 
-    return { 
-      success: true, 
-      matches: matchedUrls 
-    };
+        // Mapear os índices de volta para as URLs originais que deram match
+        const matchedUrls = parsed.indices.map((idx: number) => topCandidates[idx]);
+
+        console.log(`[AI] ${matchedUrls.length} matches confirmados pela IA.`);
+
+        return { 
+          success: true, 
+          matches: matchedUrls 
+        };
+      } catch (retryError: any) {
+        lastError = retryError;
+        const isRateLimit = retryError?.message?.includes('429') || retryError?.message?.includes('quota');
+        
+        if (isRateLimit && attempt < 3) {
+          const waitTime = attempt * 15; // 15s, 30s
+          console.warn(`[AI] Rate limit atingido. Aguardando ${waitTime}s antes da tentativa ${attempt + 1}...`);
+          await new Promise(r => setTimeout(r, waitTime * 1000));
+        } else {
+          throw retryError;
+        }
+      }
+    }
+
+    throw lastError;
   } catch (error) {
     console.error("Erro na verificação AI Gemini:", error);
     return { success: false, error: "AI Verification Failed" };
