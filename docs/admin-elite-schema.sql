@@ -46,4 +46,15 @@ CREATE POLICY "Public can insert search logs" ON public.search_logs FOR INSERT W
 CREATE POLICY "Admins can manage admin logs" ON public.admin_logs FOR ALL USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Admins can manage settings" ON public.system_settings FOR ALL USING (auth.role() = 'authenticated');
+-- 5. Correção do Loop de Indexação (Fotos "Pendentes" infinitas)
+-- Adiciona uma coluna para marcar que a foto já foi analisada pela IA, mesmo que não tenha rostos.
+ALTER TABLE public.photos ADD COLUMN IF NOT EXISTS is_indexed boolean DEFAULT false;
+
+-- Marcar fotos que já possuem registros na photo_faces como indexadas
+UPDATE public.photos 
+SET is_indexed = true 
+WHERE id IN (SELECT DISTINCT photo_id FROM public.photo_faces);
+
+-- RLS para settings (pode ser visto publicamente para calibragem da galeria)
 CREATE POLICY "Public can view non-sensitive settings" ON public.system_settings FOR SELECT USING (true);
+
