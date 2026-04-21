@@ -8,14 +8,16 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  */
 export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: string[]) {
   try {
-    const apiKey = process.env.GOOGLE_AI_STUDIO_KEY;
+    // Tentar ambas as versões da chave (com e sem prefixo)
+    const apiKey = process.env.GOOGLE_AI_STUDIO_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_KEY;
     
     if (!apiKey) {
-      console.error("ERRO CRÍTICO: GOOGLE_AI_STUDIO_KEY não encontrada no process.env");
-      // Fallback para log detalhado (sem expor a chave)
+      console.error("ERRO CRÍTICO: Chave de IA não encontrada.");
+      console.log("Variáveis de ambiente disponíveis:", Object.keys(process.env).filter(k => !k.includes('KEY') && !k.includes('SECRET')));
+      
       return { 
         success: false, 
-        error: "Chave de IA não configurada no servidor. Por favor, verifique o arquivo .env.local e reinicie o servidor." 
+        error: "Chave de IA não configurada. Verifique os logs do servidor para diagnóstico." 
       };
     }
 
