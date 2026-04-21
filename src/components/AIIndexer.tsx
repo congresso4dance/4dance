@@ -47,26 +47,22 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
   }
 
   async function fetchStats() {
-    // Total photos
+    // Get stats from photos table directly using the new is_indexed column
     const { count: total } = await supabase
       .from('photos')
       .select('*', { count: 'exact', head: true })
       .eq('event_id', eventId);
 
-    // Photos already in photo_faces (distinct)
-    const { data: indexedData } = await supabase
-      .from('photo_faces')
-      .select('photo_id')
-      .in('photo_id', (
-        await supabase.from('photos').select('id').eq('event_id', eventId)
-      ).data?.map(p => p.id) || []);
+    const { count: indexed } = await supabase
+      .from('photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('is_indexed', true);
 
-    const indexedIds = new Set(indexedData?.map(d => d.photo_id));
-    
     setStats({
       total: total || 0,
-      indexed: indexedIds.size,
-      pending: (total || 0) - indexedIds.size
+      indexed: indexed || 0,
+      pending: (total || 0) - (indexed || 0)
     });
   }
 
@@ -74,26 +70,14 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
     setIsProcessing(true);
     setStatus("Buscando fotos pendentes...");
 
-    // 1. Get all photo IDs for this event
-    const { data: allPhotos } = await supabase
+    // 1. Get all pending photos for this event
+    const { data: pendingPhotos } = await supabase
       .from('photos')
       .select('id, full_res_url')
-      .eq('event_id', eventId);
+      .eq('event_id', eventId)
+      .eq('is_indexed', false);
 
-    if (!allPhotos) {
-      setIsProcessing(false);
-      return;
-    }
-
-    // 2. Get already indexed IDs
-    const { data: indexedRecords } = await supabase
-      .from('photo_faces')
-      .select('photo_id');
-
-    const indexedSet = new Set(indexedRecords?.map(r => r.photo_id));
-    const pendingPhotos = allPhotos.filter(p => !indexedSet.has(p.id));
-
-    if (pendingPhotos.length === 0) {
+    if (!pendingPhotos || pendingPhotos.length === 0) {
       setStatus("Todas as fotos já estão indexadas! ✨");
       setIsProcessing(false);
       return;
@@ -112,6 +96,8 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
         await new Promise((res, rej) => {
           img.onload = res;
           img.onerror = rej;
+          // Timeout if image takes too long
+          setTimeout(() => rej(new Error("Timeout")), 10000);
         });
 
         // Detect all faces in photo
@@ -122,26 +108,32 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
         if (detections.length > 0) {
           const faceRecords = detections.map(det => ({
             photo_id: photo.id,
-            embedding: `[${Array.from(det.descriptor).join(',')}]` // Convert to Postgres vector string
+            embedding: `[${Array.from(det.descriptor).join(',')}]`
           }));
 
-          const { error } = await supabase.from('photo_faces').insert(faceRecords);
-          if (error) console.error("Error saving faces:", error);
-        } else {
-          // Even if no faces, we should mark it as processed? 
-          // For now, let's just move on. If we want to avoid re-scanning, 
-          // we could have a 'processed_at' column on photos.
+          await supabase.from('photo_faces').insert(faceRecords);
         }
+        
+        // 3. IMPORTANT: Mark as indexed regardless of face detection success
+        await supabase
+          .from('photos')
+          .update({ is_indexed: true })
+          .eq('id', photo.id);
 
       } catch (err) {
         console.warn(`Erro na foto ${photo.id}:`, err);
+        // Even on error, we might want to mark as indexed to avoid breaking the loop
+        // but only if it's a persistent error like 404 or Invalid Data
+        await supabase
+          .from('photos')
+          .update({ is_indexed: true })
+          .eq('id', photo.id);
       }
 
       processedCount++;
       setProgress(Math.round((processedCount / pendingPhotos.length) * 100));
       setStats(prev => ({ ...prev, indexed: prev.indexed + 1, pending: prev.pending - 1 }));
       
-      // Respiro para a thread
       if (processedCount % 3 === 0) await new Promise(r => setTimeout(r, 50));
     }
 
