@@ -26,6 +26,9 @@ interface Photo {
   storage_path: string;
 }
 
+import { Trash2, CheckCircle2, X } from 'lucide-react';
+import { logAdminAction } from '@/utils/admin-logger';
+
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -33,6 +36,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [saving, setSaving] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
   const [toast, setToast] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const router = useRouter();
   const supabase = createClient();
 
@@ -83,7 +87,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     if (error) {
       alert('Erro ao salvar: ' + error.message);
     } else {
-      alert('Evento atualizado!');
+      await logAdminAction('UPDATE_EVENT', { title: data.title }, id);
+      showToast('Evento atualizado com sucesso!');
       router.refresh();
     }
     setSaving(false);
@@ -95,31 +100,62 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       .update({ cover_url: url })
       .eq('id', id);
     
-    if (!error) setCoverUrl(url);
+    if (!error) {
+      setCoverUrl(url);
+      await logAdminAction('UPDATE_EVENT', { subtitle: 'Capa alterada' }, id);
+    }
+  };
+
+  const togglePhotoSelection = (photoId: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(photoId)) {
+      newSelected.delete(photoId);
+    } else {
+      newSelected.add(photoId);
+    }
+    setSelectedIds(newSelected);
   };
 
   const deletePhoto = async (photo: Photo) => {
     if (!confirm('Deseja realmente apagar esta foto?')) return;
 
-    // 1. Delete from Storage
     await supabase.storage.from('event-photos').remove([photo.storage_path]);
-
-    // 2. Delete from DB
     await supabase.from('photos').delete().eq('id', photo.id);
-
+    
+    await logAdminAction('DELETE_PHOTOS', { count: 1 }, id);
     setPhotos(photos.filter(p => p.id !== photo.id));
+  };
+
+  const deleteSelectedPhotos = async () => {
+    const count = selectedIds.size;
+    if (!confirm(`Deseja apagar as ${count} fotos selecionadas?`)) return;
+
+    setSaving(true);
+    const selectedPhotos = photos.filter(p => selectedIds.has(p.id));
+    const paths = selectedPhotos.map(p => p.storage_path);
+
+    // 1. Storage
+    await supabase.storage.from('event-photos').remove(paths);
+    
+    // 2. DB
+    await supabase.from('photos').delete().in('id', Array.from(selectedIds));
+
+    await logAdminAction('DELETE_PHOTOS', { count }, id);
+    setPhotos(photos.filter(p => !selectedIds.has(p.id)));
+    setSelectedIds(new Set());
+    setSaving(false);
+    showToast(`${count} fotos removidas.`);
   };
 
   const deleteEvent = async () => {
     if (!confirm('ATENÇÃO: Isso apagará o evento e TODAS as fotos permanentemente. Prosseguir?')) return;
     
-    // 1. Delete Photos first (Storage)
     const paths = photos.map(p => p.storage_path);
     if (paths.length > 0) {
       await supabase.storage.from('event-photos').remove(paths);
     }
 
-    // 2. Delete Event (Cascades to photos in DB)
+    await logAdminAction('DELETE_EVENT', { photo_count: photos.length }, id);
     const { error } = await supabase.from('events').delete().eq('id', id);
 
     if (error) {
@@ -197,6 +233,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 
                 showToast("🚀 Iniciando upload de " + files.length + " fotos...");
                 
+                let successCount = 0;
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   const fileExt = file.name.split('.').pop();
@@ -217,7 +254,12 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                       full_res_url: publicUrl,
                       storage_path: filePath
                     });
+                    successCount++;
                   }
+                }
+                
+                if (successCount > 0) {
+                  await logAdminAction('UPLOAD_PHOTOS', { count: successCount }, id);
                 }
                 router.refresh();
                 window.location.reload();
@@ -226,19 +268,41 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             Upload de Fotos
           </label>
         </div>
+
         <div className={styles.photoGrid}>
           {photos.map((photo) => (
-            <div key={photo.id} className={`${styles.photoCard} ${photo.full_res_url === coverUrl ? styles.isCover : ''}`}>
+            <div 
+              key={photo.id} 
+              onClick={() => togglePhotoSelection(photo.id)}
+              className={`${styles.photoCard} ${photo.full_res_url === coverUrl ? styles.isCover : ''} ${selectedIds.has(photo.id) ? styles.selected : ''}`}
+            >
               <Image src={photo.full_res_url} alt="Foto do evento" fill />
               {photo.full_res_url === coverUrl && <span className={styles.coverBadge}>CAPA</span>}
-              <div className={styles.photoOverlay}>
+              <div className={styles.photoOverlay} onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => setAsCover(photo.full_res_url)} className={styles.actionBtn}>Definir Capa</button>
                 <button onClick={() => deletePhoto(photo)} className={`${styles.actionBtn} ${styles.deleteBtn}`}>Excluir</button>
               </div>
             </div>
           ))}
         </div>
+
+        {selectedIds.size > 0 && (
+          <div className={styles.bulkActions}>
+            <div className={styles.bulkInfo}>
+              {selectedIds.size} {selectedIds.size === 1 ? 'foto selecionada' : 'fotos selecionadas'}
+            </div>
+            <div className={styles.bulkBtns}>
+              <button onClick={() => setSelectedIds(new Set())} className={styles.bulkCancelBtn}>
+                <X size={16} /> Cancelar
+              </button>
+              <button onClick={deleteSelectedPhotos} className={styles.bulkDeleteBtn} disabled={saving}>
+                <Trash2 size={16} /> {saving ? 'Apagando...' : 'Apagar em Massa'}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
 }
+
