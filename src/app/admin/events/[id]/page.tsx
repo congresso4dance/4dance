@@ -16,6 +16,8 @@ const eventSchema = z.object({
   location: z.string().optional(),
   styles: z.string().transform((val) => typeof val === 'string' ? val.split(',').map(s => s.trim()) : val),
   is_public: z.boolean(),
+  is_paid: z.boolean().default(true),
+  photo_price: z.coerce.number().min(0, 'Valor inválido').default(10.00),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -60,6 +62,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           location: event.location || '',
           styles: event.styles?.join(', ') || '',
           is_public: event.is_public,
+          is_paid: event.is_paid ?? true,
+          photo_price: event.photo_price ?? 15.00,
         });
         setCoverUrl(event.cover_url || '');
       }
@@ -205,6 +209,18 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           <div className={styles.inputGroup}>
             <label>Estilos (Zouk, Samba...)</label>
             <input {...register('styles')} />
+          </div>
+
+          <div className={styles.inputGroup} style={{ background: 'rgba(206, 172, 102, 0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(206, 172, 102, 0.2)' }}>
+            <label style={{ color: 'var(--primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="checkbox" {...register('is_paid')} /> 💰 Evento Pago
+            </label>
+            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1rem' }}>
+              Se desmarcado, todas as fotos serão gratuitas para download.
+            </p>
+            
+            <label>Preço por Foto (R$)</label>
+            <input type="number" step="0.01" {...register('photo_price')} />
           </div>
 
           <div className={styles.inputGroup}>

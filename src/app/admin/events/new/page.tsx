@@ -7,14 +7,17 @@ import * as z from 'zod';
 import { useDropzone } from 'react-dropzone';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { logAdminAction } from '@/utils/admin-logger';
 import styles from './new-event.module.css';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
   event_date: z.string().min(1, 'Data é obrigatória'),
   location: z.string().optional(),
-  styles: z.string().transform((val) => val.split(',').map(s => s.trim())),
+  styles: z.string().transform((val) => typeof val === 'string' ? val.split(',').map(s => s.trim()) : val),
   is_public: z.boolean().default(true),
+  is_paid: z.boolean().default(true),
+  photo_price: z.coerce.number().min(0, 'Valor inválido').default(10.00),
   password: z.string().optional(),
 });
 
@@ -65,6 +68,9 @@ export default function NewEventPage() {
       setUploading(false);
       return;
     }
+
+    // NEW: Log the event creation
+    await logAdminAction('CREATE_EVENT', { title: data.title }, event.id);
 
     // 2. Upload Photos
     let count = 0;
@@ -117,6 +123,24 @@ export default function NewEventPage() {
           <div className={styles.inputGroup}>
             <label>Estilos (separados por vírgula)</label>
             <input {...register('styles')} placeholder="Ex: Zouk, Lambada, Samba" />
+          </div>
+
+          <div className={styles.inputGroup} style={{ background: 'rgba(206, 172, 102, 0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(206, 172, 102, 0.2)' }}>
+            <label style={{ color: 'var(--primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" {...register('is_paid')} /> 💰 Evento Pago
+            </label>
+            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1rem' }}>
+              Se desmarcado, todas as fotos serão gratuitas para download.
+            </p>
+            
+            <label>Preço por Foto (R$)</label>
+            <input type="number" step="0.01" {...register('photo_price')} />
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" {...register('is_public')} /> Público
+            </label>
           </div>
         </div>
 

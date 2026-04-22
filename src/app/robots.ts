@@ -1,14 +1,12 @@
-import { MetadataRoute } from 'next';
-
+import { MetadataRoute } from 'next'
+ 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = 'https://4dance.com.br';
-
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin/', '/api/'],
+      disallow: '/admin/',
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
-  };
+    sitemap: 'https://4dance.com.br/sitemap.xml',
+  }
 }

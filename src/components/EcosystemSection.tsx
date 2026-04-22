@@ -38,35 +38,69 @@ const features = [
 ];
 
 export default function EcosystemSection() {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.2,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
+    },
+  };
+
   return (
     <section className={styles.section}>
       <div className={styles.container}>
-        <motion.h2 
-          className={styles.title}
+        <motion.div 
+          className={styles.header}
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          O Ecossistema 4Dance
-        </motion.h2>
+          <span className={styles.label}>Infraestrutura 4D</span>
+          <h2 className={styles.title}>O Ecossistema da Excelência</h2>
+          <p>Unimos sensibilidade artística e tecnologia de ponta para criar um ambiente digital premium para suas memórias.</p>
+        </motion.div>
 
-        <div className={styles.grid}>
+        <motion.div 
+          className={styles.grid}
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+        >
           {features.map((feature, index) => (
             <motion.div 
               key={index} 
               className={styles.feature}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, delay: index * 0.1 }}
+              variants={itemVariants}
+              whileHover={{ 
+                y: -10, 
+                backgroundColor: "rgba(255, 255, 255, 0.04)",
+                borderColor: "rgba(255, 0, 115, 0.3)" 
+              }}
             >
-              <div className={styles.icon}>{feature.icon}</div>
+              <div className={styles.iconWrapper}>
+                <div className={styles.iconGlow} />
+                <div className={styles.icon}>{feature.icon}</div>
+              </div>
               <h3>{feature.title}</h3>
               <p>{feature.description}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

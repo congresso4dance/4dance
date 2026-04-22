@@ -70,7 +70,18 @@
   color: rgba(255, 255, 255, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
+}
+
+.statIcon {
+  margin-bottom: 20px;
+  background: rgba(255,255,255,0.05);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .statValue {
@@ -277,6 +288,84 @@
 
 .deleteBtn:hover {
   background: rgba(255, 0, 0, 0.1);
+}
+
+.adminGridSplit {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 40px;
+  margin-bottom: 60px;
+}
+
+@media (max-width: 1024px) {
+  .adminGridSplit {
+    grid-template-columns: 1fr;
+  }
+}
+
+.activitySection {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 25px;
+  height: fit-content;
+}
+
+.logsList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.logItem {
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.logItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.logMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.logContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.logContent strong {
+  font-size: 0.8rem;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.logContent span {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.seeMore {
+  font-size: 0.8rem;
+  color: #3b82f6;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.seeMore:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 768px) {

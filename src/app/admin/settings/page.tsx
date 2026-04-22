@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Settings, Save, Shield, Brain, Zap, Bell, CheckCircle2 } from 'lucide-react';
+import { logAdminAction } from '@/utils/admin-logger';
 import styles from '../dashboard.module.css';
 
 export default function SettingsPage() {
@@ -44,6 +45,7 @@ export default function SettingsPage() {
       });
 
     if (!error) {
+      await logAdminAction('UPDATE_SETTINGS', { subtitle: 'Calibragem de IA alterada' });
       setToast(true);
       setTimeout(() => setToast(false), 3000);
     } else {

@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { LogIn, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -17,34 +20,67 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    console.log('Supabase Client:', supabase);
-    console.log('Auth Object:', supabase.auth);
-    const { error } = await supabase.auth.signInWithPassword({
+
+    // 1. Auth Sign In
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      setError(error.message);
+    if (authError) {
+      setError(authError.message);
       setLoading(false);
-    } else {
-      router.push('/admin');
+      return;
+    }
+
+    if (authData.user) {
+      // 2. Fetch User Profile to check Role
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        // Fallback for old users or missing profiles
+        router.push('/admin');
+      } else {
+        // Dynamic Redirect
+        if (profile.role === 'ADMIN') {
+          router.push('/admin');
+        } else {
+          router.push('/minhas-fotos');
+        }
+      }
+      
       router.refresh();
     }
   };
 
   return (
     <main className={styles.main}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>4Dance Admin</h1>
-        <p className={styles.subtitle}>Área restrita para gestão de eventos</p>
+      <div className={styles.glassBackground}></div>
+      
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={styles.card}
+      >
+        <div className={styles.header}>
+          <div className={styles.logoIcon}>
+            <LogIn size={32} color="var(--primary)" />
+          </div>
+          <h1 className={styles.title}>4Dance Login</h1>
+          <p className={styles.subtitle}>Acesse suas memórias e gerencie sua galeria com segurança.</p>
+        </div>
 
         <form onSubmit={handleLogin} className={styles.form}>
           <div className={styles.inputGroup}>
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email"><Mail size={16} /> Email</label>
             <input 
               id="email" 
               type="email" 
+              placeholder="seu@email.com"
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
@@ -52,23 +88,46 @@ export default function LoginPage() {
           </div>
           
           <div className={styles.inputGroup}>
-            <label htmlFor="password">Senha</label>
+            <label htmlFor="password"><Lock size={16} /> Senha</label>
             <input 
               id="password" 
               type="password" 
+              placeholder="Sua senha secreta"
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
             />
           </div>
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && (
+            <motion.p 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className={styles.error}
+            >
+              {error}
+            </motion.p>
+          )}
 
           <button type="submit" disabled={loading} className={styles.button}>
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? (
+              'Autenticando...'
+            ) : (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                Entrar <ArrowRight size={18} />
+              </span>
+            )}
           </button>
         </form>
-      </div>
+
+        <div className={styles.footer}>
+          Não tem uma conta? <Link href="/cadastro">Criar agora</Link>
+        </div>
+
+        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', opacity: 0.3 }}>
+           <ShieldCheck size={20} /> <span style={{ fontSize: '0.7rem', marginLeft: '5px' }}>Proteção Alpha Elite Ativa</span>
+        </div>
+      </motion.div>
     </main>
   );
 }

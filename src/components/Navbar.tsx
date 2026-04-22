@@ -23,6 +23,7 @@ export default function Navbar() {
   const menuLinks = [
     { href: "/", label: "Home" },
     { href: "/eventos", label: "Galeria" },
+    { href: "/minhas-fotos", label: "Minhas Fotos" },
     { href: "/sobre", label: "Sobre" },
     { href: "/contrate", label: "Contrate", isCTA: true },
   ];
@@ -34,13 +35,13 @@ export default function Navbar() {
         initial={false}
         animate={{
           width: isScrolled ? '90%' : '100%',
-          maxWidth: isScrolled ? '800px' : 'var(--container-max)',
-          paddingLeft: isScrolled ? '1.5rem' : '2rem',
-          paddingRight: isScrolled ? '1rem' : '2rem',
-          marginTop: isScrolled ? '1rem' : '0',
-          borderRadius: isScrolled ? '50px' : '0',
-          background: isScrolled ? 'rgba(5, 5, 5, 0.6)' : 'rgba(5, 5, 5, 0)',
-          boxShadow: isScrolled ? '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)' : 'none',
+          maxWidth: isScrolled ? '600px' : 'var(--container-max)',
+          paddingLeft: isScrolled ? '2rem' : '2rem',
+          paddingRight: isScrolled ? '1.5rem' : '2rem',
+          marginTop: isScrolled ? '1.5rem' : '0',
+          borderRadius: isScrolled ? '100px' : '0',
+          background: isScrolled ? 'rgba(15, 15, 15, 0.7)' : 'rgba(5, 5, 5, 0)',
+          boxShadow: isScrolled ? '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)' : 'none',
         }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       >

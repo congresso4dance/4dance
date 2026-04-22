@@ -1,7 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import styles from "./SocialProof.module.css";
+
+function TestimonialAvatar({ author, url }: { author: string, url?: string }) {
+  const [error, setError] = useState(false);
+  const initials = author.charAt(0).toUpperCase();
+  
+  if (url && !error) {
+    return (
+      <div className={styles.avatarContainer}>
+        <img 
+          src={url} 
+          alt={author} 
+          className={styles.avatarImage} 
+          onError={() => setError(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${styles.avatarContainer} ${styles.fallbackAvatar}`}>
+      {initials}
+    </div>
+  );
+}
 
 interface Testimonial {
   id: string;
@@ -101,7 +126,7 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
               <div key={`${t.id}-${index}`} className={styles.testimonialCard}>
                 <p className={styles.content}>"{t.content}"</p>
                 <div className={styles.author}>
-                  <div className={styles.avatar}>{t.author.charAt(0)}</div>
+                  <TestimonialAvatar author={t.author || ""} url={t.avatar_url} />
                   <div className={styles.info}>
                     <h4>{t.author}</h4>
                     <span>{t.role}</span>
@@ -123,7 +148,7 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
               <div key={`${t.id}-${index}`} className={styles.testimonialCard}>
                 <p className={styles.content}>"{t.content}"</p>
                 <div className={styles.author}>
-                  <div className={styles.avatar}>{t.author.charAt(0)}</div>
+                  <TestimonialAvatar author={t.author || ""} url={t.avatar_url} />
                   <div className={styles.info}>
                     <h4>{t.author}</h4>
                     <span>{t.role}</span>
