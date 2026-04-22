@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { UserSearch, Camera, Upload, CheckCircle2, AlertCircle, X, Sparkles } from "lucide-react";
+import { UserSearch, Camera, Upload, CheckCircle2, AlertCircle, X, Sparkles, Search } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { verifyFacesWithAI } from "@/app/actions/ai-verification";
 import styles from "./GallerySearch.module.css";
 import { motion, AnimatePresence } from "framer-motion";
 import * as faceapi from 'face-api.js';
 
-export default function GallerySearch({ photos, onFilter }: { photos: any[], onFilter: (filteredIds: string[] | null) => void }) {
+export default function GallerySearch({ photos, onFilter }: { photos: any[], onFilter: (filteredPhotos: any[] | null) => void }) {
   const [isScanning, setIsScanning] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [referenceDescriptor, setReferenceDescriptor] = useState<Float32Array | null>(null);
-  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referenceDescriptors, setReferenceDescriptors] = useState<Float32Array[]>([]);
+  const [referenceImages, setReferenceImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [status, setStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -24,7 +25,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
   const loadModels = async () => {
     if (modelsLoaded) return true;
     setStatus("Iniciando motor de IA...");
-    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+    const MODEL_URL = `${window.location.origin}/models`;
     try {
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -45,7 +46,11 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
     if (!file) return;
 
     setIsScanning(true);
-    setReferenceImage(file);
+    
+    // Create preview
+    const url = URL.createObjectURL(file);
+    setPreviewUrls(prev => [...prev, url]);
+    setReferenceImages(prev => [...prev, file]);
     
     const loaded = await loadModels();
     if (!loaded) {
@@ -53,7 +58,7 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
       return;
     }
 
-    setStatus("Analisando sua foto...");
+    setStatus("Analisando rosto...");
 
     try {
       const img = await faceapi.bufferToImage(file);
@@ -62,11 +67,16 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         .withFaceDescriptor();
 
       if (detection) {
-        setReferenceDescriptor(detection.descriptor);
-        setStatus("Rosto identificado! Iniciando busca na galeria...");
-        startGallerySearch(detection.descriptor, file);
+        const newDescriptors = [...referenceDescriptors, detection.descriptor];
+        setReferenceDescriptors(newDescriptors);
+        setStatus("Rosto identificado! Refinando busca...");
+        
+        // Sempre busca com todos os rostos atuais
+        startGallerySearch(newDescriptors, [...referenceImages, file]);
       } else {
         setStatus("Nenhum rosto encontrado na sua foto. Tente outra!");
+        setPreviewUrls(prev => prev.filter(p => p !== url));
+        setReferenceImages(prev => prev.filter(f => f !== file));
         setIsScanning(false);
       }
     } catch (err) {
@@ -75,9 +85,9 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
     }
   };
 
-  const startGallerySearch = async (descriptor: Float32Array, image: File) => {
+  const startGallerySearch = async (descriptors: Float32Array[], images: File[]) => {
     try {
-      setStatus("Buscando fotos no servidor...");
+      setStatus(descriptors.length > 1 ? "Buscando o casal na multidão..." : "Buscando fotos no servidor...");
       
       // 1. Fetch dynamic settings from DB
       const { data: settingsData } = await supabase
@@ -88,30 +98,36 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
       
       const config = settingsData?.value || { match_threshold: 0.92, gemini_enabled: true, max_search_results: 100 };
       
-      // Convert Float32Array to PostgreSQL vector string format
-      const embeddingString = `[${Array.from(descriptor).join(',')}]`;
+      let commonPhotoIds: string[] | null = null;
 
-      const { data, error } = await supabase.rpc('match_photo_faces', {
-        query_embedding: embeddingString,
-        match_threshold: config.match_threshold,
-        match_count: config.max_search_results
-      });
+      // Realiza a busca para cada rosto e faz a interseção
+      for (const descriptor of descriptors) {
+        const embeddingString = `[${Array.from(descriptor).join(',')}]`;
+        const { data: matchData, error: matchError } = await supabase.rpc('match_photo_faces', {
+          query_embedding: embeddingString,
+          match_threshold: config.match_threshold,
+          match_count: config.max_search_results
+        });
 
-      if (error) {
-        console.error("Erro na busca vetorial:", error);
-        setStatus("Erro na busca inteligente. Tente novamente.");
-        setIsScanning(false);
-        return;
+        if (matchError) throw matchError;
+
+        const currentIds = matchData.map((m: any) => m.photo_id);
+        if (commonPhotoIds === null) {
+          commonPhotoIds = currentIds;
+        } else {
+          // Interseção: Apenas IDs que estão em ambos
+          commonPhotoIds = commonPhotoIds.filter(id => currentIds.includes(id));
+        }
       }
 
       let success = false;
       let resultCount = 0;
 
-      if (data && data.length > 0) {
-        const photoIds = data.map((d: any) => d.photo_id);
+      if (commonPhotoIds && commonPhotoIds.length > 0) {
+        const photoIds = commonPhotoIds;
         const { data: photoData } = await supabase
           .from('photos')
-          .select('id, full_res_url, event_id')
+          .select('*')
           .in('id', photoIds);
 
         if (!photoData || photoData.length === 0) {
@@ -123,50 +139,40 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
 
         const currentEventId = photoData[0].event_id;
 
-        // TENTAR verificação com Gemini (IA Generativa)
-        try {
-          if (config.gemini_enabled) {
-            setStatus("Verificando identidade com IA Generativa... 🧐");
+        // Gemini verificado ou Fallback: Refinamento com a lógica do "Minhas Fotos"
+        setStatus("Refinando resultados com precisão Elite... ✨");
 
-            const candidates = photoIds
-              .map(id => photoData.find(p => p.id === id)?.full_res_url)
-              .filter(Boolean) as string[];
+        const faceMatcher = new faceapi.FaceMatcher(descriptors[0], 0.5); // Lógica aprovada pelo usuário
+        const finalPhotoIds: string[] = [];
 
-            const referenceBase64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(image);
-            });
+        // 2. Local refinement (A mágica que você aprovou no portal)
+        const { data: faceData } = await supabase
+          .from('photo_faces')
+          .select('photo_id, embedding')
+          .in('photo_id', photoIds);
 
-            const aiResult = await verifyFacesWithAI(referenceBase64, candidates);
-
-            if (aiResult.success && aiResult.matches && aiResult.matches.length > 0) {
-              const finalPhotoIds = photoData
-                .filter(p => aiResult.matches?.includes(p.full_res_url))
-                .map(p => p.id);
-                
-              onFilter(finalPhotoIds);
-              setStatus(`IA Confirmou ${finalPhotoIds.length} fotos suas! ✨`);
-              success = true;
-              resultCount = finalPhotoIds.length;
-            } else {
-              // Fallback to vector search
-              onFilter(photoIds);
-              setStatus(`Encontramos ${photoIds.length} fotos similares (busca vetorial). 🔍`);
-              success = true;
-              resultCount = photoIds.length;
+        if (faceData) {
+          faceData.forEach(face => {
+            const desc = new Float32Array(JSON.parse(face.embedding));
+            const match = faceMatcher.findBestMatch(desc);
+            if (match.label !== 'unknown') {
+              finalPhotoIds.push(face.photo_id);
             }
-          } else {
-            // Gemini disabled - use vector search directly
-            onFilter(photoIds);
-            setStatus(`Busca instantânea concluída! Encontramos ${photoIds.length} fotos. 🔍`);
-            success = true;
-            resultCount = photoIds.length;
-          }
-        } catch (aiError) {
-          // FALLBACK
-          onFilter(photoIds);
-          setStatus(`Busca inteligente concluída com ${photoIds.length} fotos similares. 🔍`);
+          });
+        }
+
+        const uniqueFinalIds = Array.from(new Set(finalPhotoIds));
+
+        if (uniqueFinalIds.length > 0) {
+          const finalPhotos = photoData.filter((p: any) => uniqueFinalIds.includes(p.id));
+          onFilter(finalPhotos);
+          setStatus(`Encontramos ${uniqueFinalIds.length} fotos perfeitas para você! 🔍`);
+          success = true;
+          resultCount = uniqueFinalIds.length;
+        } else {
+          // Se o refinamento for severo demais, mostramos o resultado original da busca vetorial
+          onFilter(photoData);
+          setStatus(`Encontramos ${photoIds.length} fotos similares. 🔍`);
           success = true;
           resultCount = photoIds.length;
         }
@@ -199,11 +205,28 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
   };
 
   const clearFilter = () => {
-    setReferenceDescriptor(null);
+    setReferenceDescriptors([]);
+    setReferenceImages([]);
+    setPreviewUrls([]);
     setStatus("");
     onFilter(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
+
+  const handleTextSearch = (query: string) => {
+    if (!query || query.trim() === "") {
+      onFilter(null);
+      return;
+    }
+    
+    setStatus("");
+    const lowerQuery = query.toLowerCase();
+    const filtered = photos
+      .filter(p => p.full_res_url?.toLowerCase().includes(lowerQuery))
+      .map(p => p.id);
+    
+    onFilter(filtered);
   };
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -229,8 +252,71 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         style={{ display: 'none' }} 
       />
 
+      <div className={styles.intro}>
+        <div className={styles.categoryBadge}>IA VISION</div>
+        <h2 className={styles.searchTitle}>Busca por Reconhecimento Facial</h2>
+        <p className={styles.searchSubtitle}>Encontre suas fotos instantaneamente em meio a milhares.</p>
+      </div>
+
+      {referenceDescriptors.length === 0 && (
+        <div className={styles.searchMethods}>
+          <div className={styles.textSearchWrapper}>
+            <Search className={styles.searchIcon} size={18} />
+            <input 
+              type="text" 
+              placeholder="Busque por nome do arquivo (ex: DSC_01)..." 
+              className={styles.textInput}
+              onChange={(e) => handleTextSearch(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.divider}>
+            <span>OU</span>
+          </div>
+
+          <div className={styles.tipsSection}>
+            <h4>Busca Inteligente por Face:</h4>
+            <ul className={styles.tipsGrid}>
+              <li><span>🚫</span> Sem óculos escuros</li>
+              <li><span>💡</span> Boa iluminação</li>
+              <li><span>📸</span> Olhe para a câmera</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className={styles.controls}>
-        {!referenceDescriptor ? (
+        {referenceDescriptors.length > 0 && (
+          <div className={styles.selectedFaces}>
+            {previewUrls.map((url, i) => (
+              <div key={i} className={styles.faceTag}>
+                <img src={url} alt="Face" className={styles.faceThumb} />
+                {referenceDescriptors.length > 1 && (
+                  <button className={styles.removeFace} onClick={() => {
+                    const newDescs = [...referenceDescriptors];
+                    const newImages = [...referenceImages];
+                    const newUrls = [...previewUrls];
+                    newDescs.splice(i, 1);
+                    newImages.splice(i, 1);
+                    newUrls.splice(i, 1);
+                    setReferenceDescriptors(newDescs);
+                    setReferenceImages(newImages);
+                    setPreviewUrls(newUrls);
+                    if (newDescs.length > 0) startGallerySearch(newDescs, newImages);
+                    else clearFilter();
+                  }}><X size={10} /></button>
+                )}
+              </div>
+            ))}
+            {referenceDescriptors.length < 2 && (
+              <button className={styles.addPartnerBtn} onClick={() => fileInputRef.current?.click()}>
+                + Adicionar Parceiro(a)
+              </button>
+            )}
+          </div>
+        )}
+
+        {referenceDescriptors.length === 0 ? (
           <div className={styles.dualButtons}>
             <button 
               className={styles.searchBtn} 
@@ -266,24 +352,51 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className={styles.searchHeader}>
-              <div className={styles.iconWrapper}>
-                {isScanning ? (
-                  <motion.div
-                    animate={{ rotate: 360, scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  >
-                    <Sparkles className={styles.sparkleIcon} />
-                  </motion.div>
-                ) : referenceDescriptor ? (
-                  <CheckCircle2 className={styles.successIcon} />
+            <div className={styles.scannerContainer}>
+              <div className={styles.scannerHeader}>
+                <motion.div 
+                  className={styles.aiBadge}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Sparkles size={16} /> 4D IA VISION
+                </motion.div>
+                <h3>{status || "Iniciando Processamento"}</h3>
+              </div>
+
+              <div className={styles.imageStage}>
+                {previewUrls.length > 0 ? (
+                  <div className={styles.previewContainer}>
+                    <img src={previewUrls[previewUrls.length - 1]} alt="Scanning" className={styles.previewImage} />
+                    <motion.div 
+                      className={styles.scanLine}
+                      animate={{ top: ['0%', '100%', '0%'] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    />
+                    <div className={styles.scanOverlay} />
+                  </div>
                 ) : (
-                  <UserSearch className={styles.searchIcon} />
+                  <div className={styles.imagePlaceholder}>
+                    <div className={styles.pulseSquare} />
+                  </div>
                 )}
               </div>
-              <div className={styles.headerText}>
-                <h3>Busca Inteligente</h3>
-                <p>{status || "Encontre suas fotos instantaneamente pela sua fisionomia."}</p>
+
+              <div className={styles.scannerFooter}>
+                <div className={styles.loadingSteps}>
+                  <div className={styles.step}>
+                    <div className={`${styles.dot} ${modelsLoaded ? styles.active : styles.pulse}`} />
+                    <span>Rede Neural</span>
+                  </div>
+                  <div className={styles.step}>
+                    <div className={`${styles.dot} ${referenceDescriptors.length > 0 ? styles.active : (modelsLoaded ? styles.pulse : '')}`} />
+                    <span>Vetor Facial</span>
+                  </div>
+                  <div className={styles.step}>
+                    <div className={`${styles.dot} ${isScanning && referenceDescriptors.length > 0 ? styles.pulse : ''}`} />
+                    <span>Deep Search</span>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>

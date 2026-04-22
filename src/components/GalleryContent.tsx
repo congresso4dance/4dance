@@ -4,14 +4,18 @@ import { useState, useEffect, useRef } from 'react';
 import styles from '@/app/eventos/[slug]/gallery.module.css';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
-import { Heart, Share2, Download, X, ChevronLeft, ChevronRight, Lock, Filter } from 'lucide-react';
+import { Heart, Share2, Download, X, ChevronLeft, ChevronRight, Lock, Filter, Target, ShoppingBag, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { useCart } from '@/hooks/useCart';
 import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import LeadForm from './LeadForm';
 import GallerySearch from './GallerySearch';
+import CheckoutModal from './CheckoutModal';
+import WatermarkGrid from './WatermarkGrid';
+import * as faceapi from 'face-api.js';
 
 // Componente para item de foto com Parallax Individual (Apple Elite)
-const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, isFavorite, onToggleFavorite }: any) => {
+const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, isFavorite, onToggleFavorite, onAddToCart, isInCart, isPaid }: any) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -30,17 +34,31 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
     >
       <div className={styles.imageWrapper} onClick={onSelect}>
         <Image 
-          src={photo.full_res_url} 
+          src={photo.thumbnail_url} 
           alt="Foto 4Dance" 
           className={styles.galleryImg}
-          width={600}
-          height={800}
+          width={0}
+          height={0}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           loading={index < 6 ? "eager" : "lazy"}
           priority={index < 6}
-          style={{ objectFit: 'cover' }}
+          style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
         />
+        {isPaid && <WatermarkGrid />}
         <div className={styles.overlay}>
+          {photo.isFiltered && (
+            <div className={styles.iaBadges}>
+              <motion.div 
+                className={styles.purityBadge}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                <Target size={12} /> Confirmado
+              </motion.div>
+            </div>
+          )}
           <div className={styles.topActions}>
             <button 
               className={`${styles.iconBtn} ${isFavorite ? styles.favorited : ''}`}
@@ -52,34 +70,80 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
               <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
             </button>
           </div>
-          <button 
-            className={styles.downloadBtn}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDownload(photo.full_res_url);
-            }}
-          >
-            <Download size={18} />
-            <span>Baixar Grátis</span>
-          </button>
+          <div className={styles.bottomActions}>
+            {isPaid ? (
+              <button 
+                className={`${styles.cartBtn} ${isInCart ? styles.inCart : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart(photo);
+                }}
+              >
+                {isInCart ? <><CheckCircle2 size={16} /> No Carrinho</> : <><ShoppingBag size={16} /> Comprar HD</>}
+              </button>
+            ) : (
+              <button 
+                className={styles.cartBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(photo.full_res_url);
+                }}
+              >
+                <Download size={16} /> Baixar HD Grátis
+              </button>
+            )}
+            <button 
+              className={styles.downloadBtnMini}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(photo);
+              }}
+              title={isPaid ? "Baixar Prévia Grátis" : "Baixar HD Grátis"}
+            >
+              <Download size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
   );
 };
 
-export default function GalleryContent({ event, photos }: { event: any, photos: any[] }) {
+export default function GalleryContent({ event, photos: initialPhotos }: { event: any, photos: any[] }) {
+  const [allPhotos, setAllPhotos] = useState<any[]>(initialPhotos);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialPhotos.length === 100);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
-  const [filteredPhotoIds, setFilteredPhotoIds] = useState<string[] | null>(null);
+  const [filteredPhotos, setFilteredPhotos] = useState<any[] | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isLeaded, setIsLeaded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const { addToCart, isInCart, items, count, total, clearCart, removeFromCart } = useCart(event.id);
+  const [showCart, setShowCart] = useState(false);
+  const [focalPoint, setFocalPoint] = useState({ x: 50, y: 50 });
+  const [isZooming, setIsZooming] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+
+  let displayPhotos = filteredPhotos ? filteredPhotos : allPhotos;
+  if (showOnlyFavorites) {
+    displayPhotos = displayPhotos.filter((p: any) => favorites.includes(p.id));
+  }
+
+  const isSyncing = event.synced_photos < event.total_fb_photos;
+  const syncProgress = event.total_fb_photos > 0 ? (event.synced_photos / event.total_fb_photos) * 100 : 0;
+
+  // Infinite Scroll Trigger desativado para manter o layout Masonry "liso" sem saltos de colunas.
+  // Todas as fotos são carregadas do lado do servidor (page.tsx) permitindo que o next/image realize Lazy Loading otimizado e fluido.
 
   useEffect(() => {
     // Carregar leads e favoritos
@@ -92,7 +156,7 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
     // Deep Linking: Abrir foto se houver ID na URL
     const photoId = searchParams.get('photo');
     if (photoId) {
-      const idx = photos.findIndex(p => p.id === photoId);
+      const idx = allPhotos.findIndex(p => p.id === photoId);
       if (idx !== -1) setSelectedIndex(idx);
     }
     
@@ -106,7 +170,7 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedIndex, photos]);
+  }, [selectedIndex, allPhotos]);
 
   const toggleFavorite = (id: string) => {
     const newFavs = favorites.includes(id) 
@@ -127,8 +191,10 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
           text: 'Olha que foto incrível na 4Dance!',
           url: shareUrl,
         });
-      } catch (err) {
-        console.error("Erro ao compartilhar:", err);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Erro ao compartilhar:", err);
+        }
       }
     } else {
       await navigator.clipboard.writeText(shareUrl);
@@ -138,9 +204,39 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
 
   const openLightbox = (index: number) => {
     setSelectedIndex(index);
+    setIsZooming(false);
+    setFocalPoint({ x: 50, y: 50 });
+    
     const params = new URLSearchParams(searchParams);
-    params.set('photo', photos[index].id);
+    params.set('photo', displayPhotos[index].id);
     window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+
+    // Trigger Intelligent Zoom Detection (Usa sempre a full_res_url para não cegar a IA)
+    detectFaceForZoom(displayPhotos[index].full_res_url);
+  };
+
+  const detectFaceForZoom = async (url: string) => {
+    setIsDetecting(true);
+    try {
+      // Pequeno delay para a animação do Lightbox abrir primeiro
+      await new Promise(r => setTimeout(r, 600));
+
+      const img = await faceapi.fetchImage(url);
+      const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions());
+
+      if (detection) {
+        const { box } = detection;
+        const centerX = ((box.x + box.width / 2) / img.width) * 100;
+        const centerY = ((box.y + box.height / 2) / img.height) * 100;
+        
+        setFocalPoint({ x: centerX, y: centerY });
+        setIsZooming(true);
+      }
+    } catch (err) {
+      console.warn("Cinema Flow detect error:", err);
+    } finally {
+      setIsDetecting(false);
+    }
   };
 
   const closeLightbox = () => {
@@ -153,43 +249,49 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDownload = async (photoUrl: string) => {
-    if (!isLeaded) {
+  const handleDownload = async (photo: any) => {
+    if (!isLeaded && event.is_paid === false) {
       setShowLeadForm(true);
       return;
     }
 
-    showToast("📸 Preparando sua foto em HD...");
+    showToast("📸 Gerando seu link seguro de download...");
     try {
-      // Tentativa de download direto via Blob (Melhor UX)
-      const response = await fetch(photoUrl, { mode: 'cors' });
-      
-      if (!response.ok) throw new Error('CORS_OR_NETWORK_ERROR');
+      const response = await fetch(`${window.location.origin}/api/photos/get-download-url?photoId=${photo.id}`);
+      const data = await response.json();
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao obter link de download');
+      }
+
+      const signedUrl = data.url;
+      
+      // Criar um link temporário e clicar para baixar
       const link = document.createElement('a');
-      link.href = url;
-      link.download = `4dance-${event.slug}-${Date.now()}.jpg`;
+      link.href = signedUrl;
+      // Forçar download do arquivo original com nome limpo
+      link.setAttribute('download', `4dance-${event.slug}-${photo.id.slice(-6)}.jpg`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      showToast("✅ Download concluído!");
-    } catch (err) {
-      console.warn("Download direto falhou, usando abertura em nova aba:", err);
-      // Fallback: Abertura direta em nova aba
-      window.open(photoUrl, '_blank');
-      showToast("📸 Foto aberta em nova aba! Clique com o botão direito para salvar.");
+      
+      showToast("✅ Download iniciado com sucesso!");
+    } catch (err: any) {
+      console.error("Download Error:", err);
+      showToast(`❌ ${err.message || "Erro ao baixar foto"}`);
+      
+      if (err.message?.includes('comprada')) {
+        setShowCart(true);
+      }
     }
   };
 
   const handleNext = () => {
-    if (selectedIndex !== null && selectedIndex < photos.length - 1) {
+    if (selectedIndex !== null && selectedIndex < displayPhotos.length - 1) {
       const nextIdx = selectedIndex + 1;
       setSelectedIndex(nextIdx);
       const params = new URLSearchParams(searchParams);
-      params.set('photo', photos[nextIdx].id);
+      params.set('photo', displayPhotos[nextIdx].id);
       window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     }
   };
@@ -199,7 +301,7 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
       const prevIdx = selectedIndex - 1;
       setSelectedIndex(prevIdx);
       const params = new URLSearchParams(searchParams);
-      params.set('photo', photos[prevIdx].id);
+      params.set('photo', displayPhotos[prevIdx].id);
       window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     }
   };
@@ -216,21 +318,10 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
     }
   };
 
-  const isSyncing = event.synced_photos < event.total_fb_photos;
-  const syncProgress = event.total_fb_photos > 0 ? (event.synced_photos / event.total_fb_photos) * 100 : 0;
-
-  let displayPhotos = filteredPhotoIds 
-    ? photos.filter(p => filteredPhotoIds.includes(p.id))
-    : photos;
-
-  if (showOnlyFavorites) {
-    displayPhotos = displayPhotos.filter(p => favorites.includes(p.id));
-  }
-
   return (
     <>
       <div className={styles.searchBarRow}>
-        <GallerySearch photos={photos} onFilter={setFilteredPhotoIds} />
+        <GallerySearch photos={allPhotos} onFilter={setFilteredPhotos} />
         <div className={styles.filterGroup}>
           <button 
             className={`${styles.filterBtn} ${showOnlyFavorites ? styles.active : ''}`}
@@ -238,6 +329,15 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
           >
             <Heart size={18} fill={showOnlyFavorites ? "currentColor" : "none"} />
             Favoritas ({favorites.length})
+          </button>
+          
+          <button 
+            className={`${styles.cartFloatingBtn} ${count > 0 ? styles.hasItems : ''}`}
+            onClick={() => setShowCart(true)}
+          >
+            <ShoppingCart size={20} />
+            {count > 0 && <span className={styles.cartBadge}>{count}</span>}
+            <span className={styles.cartText}>Ver Carrinho (R$ {total.toFixed(2)})</span>
           </button>
         </div>
       </div>
@@ -258,6 +358,7 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
       )}
 
       <motion.div 
+        key={filteredPhotos ? 'filtered' : 'all'}
         className={styles.masonry}
         variants={containerVariants}
         initial="hidden"
@@ -266,12 +367,24 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
         {displayPhotos?.map((photo, index) => (
           <ParallaxPhoto 
             key={photo.id}
-            photo={photo}
+            photo={{ ...photo, isFiltered: !!filteredPhotos }}
             index={index}
             isFavorite={favorites.includes(photo.id)}
             onToggleFavorite={toggleFavorite}
             onSelect={() => openLightbox(index)}
             handleDownload={handleDownload}
+            isInCart={isInCart(photo.id)}
+            onAddToCart={(p: any) => {
+              addToCart({
+                id: p.id,
+                url: p.full_res_url,
+                price: event.photo_price || 15.00,
+                eventId: event.id,
+                eventTitle: event.title
+              });
+              showToast("✨ Foto adicionada ao carrinho!");
+            }}
+            isPaid={event.is_paid}
           />
         ))}
       </motion.div>
@@ -288,19 +401,19 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
           >
             <div className={styles.lightboxActions}>
               <button 
-                className={`${styles.actionBtn} ${favorites.includes(photos[selectedIndex].id) ? styles.favorited : ''}`}
+                className={`${styles.actionBtn} ${favorites.includes(displayPhotos[selectedIndex].id) ? styles.favorited : ''}`}
                 onClick={(e) => { 
                   e.stopPropagation(); 
-                  toggleFavorite(photos[selectedIndex].id); 
+                  toggleFavorite(displayPhotos[selectedIndex].id); 
                 }}
               >
-                <Heart size={22} fill={favorites.includes(photos[selectedIndex].id) ? "currentColor" : "none"} />
+                <Heart size={22} fill={favorites.includes(displayPhotos[selectedIndex].id) ? "currentColor" : "none"} />
               </button>
               <button 
                 className={styles.actionBtn} 
                 onClick={(e) => { 
                   e.stopPropagation(); 
-                  handleShare(photos[selectedIndex]); 
+                  handleShare(displayPhotos[selectedIndex]); 
                 }}
               >
                 <Share2 size={22} />
@@ -309,7 +422,7 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
                 className={styles.actionBtn} 
                 onClick={(e) => { 
                   e.stopPropagation(); 
-                  handleDownload(photos[selectedIndex].full_res_url); 
+                  handleDownload(displayPhotos[selectedIndex]); 
                 }}
               >
                 <Download size={22} />
@@ -330,22 +443,61 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
               className={styles.lightboxContent} 
               onClick={(e) => e.stopPropagation()}
             >
-              <Image 
-                src={photos[selectedIndex].full_res_url} 
-                alt="Ampliada" 
-                className={styles.lightboxImage}
-                width={1920}
-                height={1080}
-                style={{ objectFit: 'contain' }}
-                priority
-                unoptimized
-              />
+              <motion.div 
+                className={styles.lightboxImageContainer}
+                animate={{ 
+                  scale: isZooming ? 1.4 : 1,
+                  originX: focalPoint.x / 100,
+                  originY: focalPoint.y / 100
+                }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 40, 
+                  damping: 15,
+                  delay: 0.2
+                }}
+              >
+                <Image 
+                  ref={imgRef}
+                  src={displayPhotos[selectedIndex].thumbnail_url} 
+                  alt="Ampliada" 
+                  className={styles.lightboxImage}
+                  fill
+                  unoptimized={true}
+                  style={{ objectFit: 'contain' }}
+                  priority
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
+                />
+
+                {/* --- PRELOAD INVISÍVEL (CARREGA A PRÓXIMA FOTO NO FUNDO) --- */}
+                {selectedIndex < displayPhotos.length - 1 && (
+                  <Image 
+                    src={displayPhotos[selectedIndex + 1].thumbnail_url} 
+                    alt="Preload Next" 
+                    fill 
+                    unoptimized={true} 
+                    style={{ opacity: 0, pointerEvents: 'none' }} 
+                  />
+                )}
+                {selectedIndex > 0 && (
+                  <Image 
+                    src={displayPhotos[selectedIndex - 1].thumbnail_url} 
+                    alt="Preload Prev" 
+                    fill 
+                    unoptimized={true} 
+                    style={{ opacity: 0, pointerEvents: 'none' }} 
+                  />
+                )}
+
+              </motion.div>
+              {event.is_paid && <WatermarkGrid opacity={0.3} />}
               <div className={styles.photoCounter}>
-                <span>{selectedIndex + 1}</span> / {photos.length}
+                <span>{selectedIndex + 1}</span> / {displayPhotos.length}
               </div>
             </motion.div>
 
-            {selectedIndex < photos.length - 1 && (
+            {selectedIndex < displayPhotos.length - 1 && (
               <button className={`${styles.navBtn} ${styles.nextBtn}`} onClick={(e) => { e.stopPropagation(); handleNext(); }}>
                 <ChevronRight size={40} />
               </button>
@@ -353,6 +505,18 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CheckoutModal 
+        isOpen={showCart}
+        onClose={() => setShowCart(false)}
+        items={items}
+        total={total}
+        onRemove={removeFromCart}
+        onSuccess={() => {
+          clearCart();
+          showToast("💳 Compra simulada com sucesso! Carrinho limpo.");
+        }}
+      />
 
       <LeadForm 
         isOpen={showLeadForm} 
@@ -369,7 +533,7 @@ export default function GalleryContent({ event, photos }: { event: any, photos: 
         </div>
       )}
 
-      {(!photos || photos.length === 0) && (
+      {(!allPhotos || allPhotos.length === 0) && (
         <div className={styles.empty}>
           <p>Estamos processando as fotos deste evento.</p>
           <button className={styles.notifyBtn} onClick={() => setShowLeadForm(true)}>

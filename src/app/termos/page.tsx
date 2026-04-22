@@ -25,12 +25,17 @@ export default function TermsPage() {
         </section>
 
         <section className={styles.sectionBlock}>
-          <h2 className={styles.heading}>4. Aquisição de Álbuns</h2>
-          <p className={styles.text}>O acesso a álbuns digitais e download de fotos está sujeito ao pagamento da taxa correspondente ao evento ou plano contratado.</p>
+          <h2 className={styles.heading}>4. Aquisição de Álbuns e Pagamentos</h2>
+          <p className={styles.text}>O acesso a álbuns digitais e download de fotos está sujeito ao pagamento da taxa correspondente via PIX ou Cartão de Crédito. Utilizamos o **Stripe** como processador de pagamentos seguro, não armazenando seus dados de cartão em nossos servidores.</p>
         </section>
 
         <section className={styles.sectionBlock}>
-          <h2 className={styles.heading}>5. Limitação de Responsabilidade</h2>
+          <h2 className={styles.heading}>5. Política de Reembolso</h2>
+          <p className={styles.text}>Por se tratar de um produto digital de entrega instantânea e consumo imediato (download), o direito de arrependimento de 7 dias não se aplica após a realização do download da fotografia. Caso haja algum erro técnico no arquivo, faremos a substituição sem custo adicional.</p>
+        </section>
+
+        <section className={styles.sectionBlock}>
+          <h2 className={styles.heading}>6. Limitação de Responsabilidade</h2>
           <p className={styles.text}>A 4Dance não se responsabiliza por eventuais interrupções temporárias do serviço ou compartilhamento indevido de links de álbuns por parte dos usuários.</p>
         </section>
       </div>

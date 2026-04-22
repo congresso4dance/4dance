@@ -58,7 +58,7 @@ export default async function EventGalleryPage({ params }: Props) {
     notFound();
   }
 
-  // 2. Fetch Photos
+  // 2. Fetch All Photos (Rolagem lisa pelo cliente)
   const { data: photos, error: photosError } = await supabase
     .from('photos')
     .select('*')

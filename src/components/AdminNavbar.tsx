@@ -33,6 +33,18 @@ export default function AdminNavbar({ active }: { active?: string }) {
           >
             ➕ Novo Evento
           </Link>
+          <Link 
+            href="/admin/recovery" 
+            className={active === 'recovery' ? styles.active : ''}
+          >
+            💬 Venda Proativa
+          </Link>
+          <Link 
+            href="/admin/insights" 
+            className={active === 'insights' ? styles.active : ''}
+          >
+            🧠 Insights
+          </Link>
           <Link href="/" className={styles.backBtn}>
             🏠 Voltar ao Site
           </Link>

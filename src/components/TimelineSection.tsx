@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useScroll, useSpring } from "framer-motion";
+import { useRef } from "react";
 import styles from "./TimelineSection.module.css";
 
 const steps = [
@@ -27,37 +28,61 @@ const steps = [
 ];
 
 export default function TimelineSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start center", "end center"]
+  });
+
+  const scaleY = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
+
   return (
-    <section className={styles.section} id="sobre">
+    <section className={styles.section} id="sobre" ref={containerRef}>
       <div className={styles.container}>
         <motion.div 
           className={styles.header}
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h2>Nossa Jornada</h2>
-          <p>Transformando momentos efêmeros em legados visuais.</p>
+          <span className={styles.label}>Nossa História</span>
+          <h2>A Jornada do Olhar</h2>
+          <p>Transformando momentos efêmeros em legados visuais desde o primeiro click.</p>
         </motion.div>
 
-        <div className={styles.timeline}>
-          {steps.map((step, index) => (
+        <div className={styles.timelineWrapper}>
+          {/* Dynamic Progress Line */}
+          <div className={styles.lineTrack}>
             <motion.div 
-              key={index} 
-              className={styles.item}
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.7, delay: index * 0.1 }}
-            >
-              <span className={styles.year}>{step.year}</span>
-              <div className={styles.content}>
-                <h3>{step.title}</h3>
-                <p>{step.description}</p>
-              </div>
-            </motion.div>
-          ))}
+              className={styles.lineProgress} 
+              style={{ scaleY, originY: 0 }}
+            />
+          </div>
+
+          <div className={styles.timeline}>
+            {steps.map((step, index) => (
+              <motion.div 
+                key={index} 
+                className={styles.item}
+                initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, delay: index * 0.15, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className={styles.dot} />
+                <span className={styles.year}>{step.year}</span>
+                <div className={styles.content}>
+                  <h3>{step.title}</h3>
+                  <p>{step.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
