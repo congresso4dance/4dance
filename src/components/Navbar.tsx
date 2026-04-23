@@ -25,6 +25,7 @@ export default function Navbar() {
     { href: "/eventos", label: "Galeria" },
     { href: "/minhas-fotos", label: "Minhas Fotos" },
     { href: "/sobre", label: "Sobre" },
+    { href: "/portal-fotografo", label: "Área do Fotógrafo" },
     { href: "/contrate", label: "Contrate", isCTA: true },
   ];
 

@@ -10,6 +10,9 @@ import { useRouter } from 'next/navigation';
 import { logAdminAction } from '@/utils/admin-logger';
 import styles from './new-event.module.css';
 
+import { Camera, Wallet } from 'lucide-react';
+import { useEffect } from 'react';
+
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
   event_date: z.string().min(1, 'Data é obrigatória'),
@@ -19,12 +22,20 @@ const eventSchema = z.object({
   is_paid: z.any().optional(),
   photo_price: z.any().optional(),
   password: z.string().optional().nullable(),
+  commission_rate: z.any().optional(),
+  photographer_id: z.string().optional().nullable(),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
+interface Photographer {
+  id: string;
+  full_name: string;
+}
+
 export default function NewEventPage() {
   const [files, setFiles] = useState<File[]>([]);
+  const [photographers, setPhotographers] = useState<Photographer[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const router = useRouter();
@@ -36,6 +47,8 @@ export default function NewEventPage() {
       is_public: true,
       is_paid: true,
       photo_price: 10.00,
+      commission_rate: 0.10,
+      photographer_id: '',
       title: '',
       event_date: '',
       location: '',
@@ -43,6 +56,17 @@ export default function NewEventPage() {
       password: '',
     }
   });
+
+  useEffect(() => {
+    async function loadPhotographers() {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('role', 'PHOTOGRAPHER');
+      if (data) setPhotographers(data);
+    }
+    loadPhotographers();
+  }, [supabase]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles((prev) => [...prev, ...acceptedFiles]);
@@ -70,6 +94,8 @@ export default function NewEventPage() {
         is_public: data.is_public === 'true' || data.is_public === true,
         is_paid: data.is_paid === 'true' || data.is_paid === true,
         photo_price: Number(data.photo_price),
+        commission_rate: Number(data.commission_rate),
+        photographer_id: data.photographer_id || null,
         styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles,
         slug,
       }])
@@ -85,20 +111,44 @@ export default function NewEventPage() {
     // NEW: Log the event creation
     await logAdminAction('CREATE_EVENT', { title: data.title }, event.id);
 
-    // 2. Upload Photos
+    // 2. Upload Photos with Watermark
     let count = 0;
     for (const file of files) {
-      const fileName = `${event.id}/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('event-photos')
-        .upload(fileName, file);
+      const fileExt = file.name.split('.').pop();
+      const baseName = `${Date.now()}-${Math.random()}`;
+      const fullPath = `${event.id}/full_${baseName}.${fileExt}`;
+      const thumbPath = `${event.id}/thumb_${baseName}.${fileExt}`;
 
-      if (uploadData) {
-        await supabase.from('photos').insert([{
-          event_id: event.id,
-          storage_path: uploadData.path,
-          full_res_url: supabase.storage.from('event-photos').getPublicUrl(uploadData.path).data.publicUrl
-        }]);
+      try {
+        // Aplicar Marca d'água
+        const { applyWatermark } = await import('@/utils/watermark');
+        const wmBlob = await applyWatermark(file);
+        const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
+
+        // Upload High Res
+        const { error: fullError } = await supabase.storage
+          .from('event-photos')
+          .upload(fullPath, file);
+
+        // Upload Watermarked
+        const { error: thumbError } = await supabase.storage
+          .from('event-photos')
+          .upload(thumbPath, wmFile);
+
+        if (!fullError && !thumbError) {
+          const fullUrl = supabase.storage.from('event-photos').getPublicUrl(fullPath).data.publicUrl;
+          const thumbUrl = supabase.storage.from('event-photos').getPublicUrl(thumbPath).data.publicUrl;
+
+          await supabase.from('photos').insert({
+            event_id: event.id,
+            full_res_url: fullUrl,
+            thumbnail_url: thumbUrl,
+            storage_path: fullPath,
+            photographer_id: data.photographer_id || null
+          });
+        }
+      } catch (err) {
+        console.error("Upload error:", err);
       }
       
       count++;
@@ -148,6 +198,38 @@ export default function NewEventPage() {
             
             <label>Preço por Foto (R$)</label>
             <input type="number" step="0.01" {...register('photo_price')} />
+          </div>
+
+          {/* Marketplace Section */}
+          <div className={styles.inputGroup} style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', marginBottom: '1.2rem', color: '#fff' }}>
+              <Camera size={18} /> Marketplace do Fotógrafo
+            </h3>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Wallet size={16} /> Comissão da Plataforma (%)
+              </label>
+              <input 
+                type="number" 
+                step="0.001" 
+                {...register('commission_rate')} 
+                placeholder="Ex: 0.100 para 10%" 
+              />
+              <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>
+                Quanto a sua plataforma ganha sobre cada foto vendida.
+              </p>
+            </div>
+
+            <div>
+              <label>Fotógrafo Responsável</label>
+              <select {...register('photographer_id')} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: '#111', border: '1px solid #333', color: '#fff' }}>
+                <option value="">Selecione um fotógrafo...</option>
+                {photographers.map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className={styles.inputGroup}>

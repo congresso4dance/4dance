@@ -61,19 +61,31 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Acesso negado. Esta foto precisa ser comprada.' }, { status: 403 });
     }
 
-    // 3. GENERATE SIGNED URL (Expire in 1 hour)
-    const bucket = 'photos'; // Bucket configurado
-    const { data: signedData, error: signedError } = await supabaseAdmin.storage
-      .from(bucket)
-      .createSignedUrl(photo.storage_path, 3600, {
-          download: true
-      });
+    // 3. GENERATE SIGNED URL (Resilient to bucket name)
+    const buckets = ['event-photos', 'photos'];
+    let signedUrl = null;
+    let lastError = null;
 
-    if (signedError) {
-      return NextResponse.json({ error: 'Erro ao gerar link seguro' }, { status: 500 });
+    for (const b of buckets) {
+      const { data: signedData, error: signedError } = await supabaseAdmin.storage
+        .from(b)
+        .createSignedUrl(photo.storage_path, 3600, {
+            download: true
+        });
+      
+      if (!signedError && signedData?.signedUrl) {
+        signedUrl = signedData.signedUrl;
+        break;
+      }
+      lastError = signedError;
     }
 
-    return NextResponse.json({ url: signedData.signedUrl });
+    if (!signedUrl) {
+      console.error('Signed URL Error:', lastError);
+      return NextResponse.json({ error: 'Erro ao localizar arquivo no storage' }, { status: 500 });
+    }
+
+    return NextResponse.json({ url: signedUrl });
 
   } catch (err: any) {
     console.error('Download API Error:', err);

@@ -1,0 +1,188 @@
+.container {
+  min-height: 100vh;
+  background-color: #000;
+  color: #fff;
+  padding: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ceac66;
+}
+
+.userHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #ceac66, #e6c98a);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #000;
+}
+
+.userName {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.userRole {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 4px 0 0;
+}
+
+.upgradeBtn {
+  background: transparent;
+  color: #3b82f6;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mainContent {
+  padding-bottom: 2rem;
+}
+
+.navMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.5rem;
+}
+
+.menuSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.menuItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 0;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.menuItem:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  padding-left: 8px;
+}
+
+.menuItemLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+
+.menuIcon {
+  opacity: 0.6;
+}
+
+.chevron {
+  opacity: 0.4;
+}
+
+.logoutBtn {
+  margin-top: 2rem;
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 1.1rem;
+  text-align: left;
+  padding: 1rem 0;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Dashboard Specific Styles (to be used in page.tsx) */
+.walletCard {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.walletHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.walletTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.currencySelect {
+  background: #111;
+  border: 1px solid #333;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.balanceInfo {
+  margin-bottom: 1rem;
+}
+
+.balanceValue {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ceac66;
+}
+
+.balanceLabel {
+  font-size: 0.8rem;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}

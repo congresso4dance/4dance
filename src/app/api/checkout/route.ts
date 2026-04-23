@@ -39,7 +39,37 @@ export async function POST(req: Request) {
 
     if (orderError) throw orderError;
 
-    // 2. Create Stripe Session
+    // 2. Fetch Event details for Split logic
+    const { data: event } = await supabase
+      .from('events')
+      .select('commission_rate, photographer_id')
+      .eq('id', eventId)
+      .single();
+
+    let transferData = undefined;
+    if (event?.photographer_id) {
+      const { data: photographer } = await supabase
+        .from('profiles')
+        .select('stripe_account_id, stripe_onboarding_complete')
+        .eq('id', event.photographer_id)
+        .single();
+
+      // Only split if the photographer has a connected account
+      if (photographer?.stripe_account_id) {
+        // Platform keeps 'commission_rate', Photographer gets the rest
+        // Default commission is 10% if not set
+        const commissionRate = event.commission_rate ?? 10;
+        const photographerSharePercent = (100 - commissionRate) / 100;
+        const amountForPhotographer = Math.round(finalAmount * photographerSharePercent * 100);
+
+        transferData = {
+          destination: photographer.stripe_account_id,
+          amount: amountForPhotographer,
+        };
+      }
+    }
+
+    // 3. Create Stripe Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'pix'],
       line_items: items.map((item: any) => ({
@@ -54,6 +84,9 @@ export async function POST(req: Request) {
         quantity: 1,
       })),
       mode: 'payment',
+      payment_intent_data: transferData ? {
+        transfer_data: transferData,
+      } : undefined,
       success_url: `${req.headers.get('origin')}/minhas-fotos?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin')}/eventos?canceled=true`,
       metadata: {
