@@ -13,12 +13,12 @@ import styles from './new-event.module.css';
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
   event_date: z.string().min(1, 'Data é obrigatória'),
-  location: z.string().optional(),
-  styles: z.string().optional(),
-  is_public: z.boolean().default(true),
-  is_paid: z.boolean().default(true),
-  photo_price: z.coerce.number().min(0, 'Valor inválido').default(10.00),
-  password: z.string().optional(),
+  location: z.string().optional().nullable(),
+  styles: z.string().optional().nullable(),
+  is_public: z.boolean(),
+  is_paid: z.boolean(),
+  photo_price: z.coerce.number().min(0, 'Valor inválido'),
+  password: z.string().optional().nullable(),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -32,6 +32,16 @@ export default function NewEventPage() {
 
   const { register, handleSubmit, formState: { errors } } = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
+    defaultValues: {
+      is_public: true,
+      is_paid: true,
+      photo_price: 10.00,
+      title: '',
+      event_date: '',
+      location: '',
+      styles: '',
+      password: '',
+    }
   });
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
