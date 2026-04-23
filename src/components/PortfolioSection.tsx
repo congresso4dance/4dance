@@ -2,25 +2,18 @@
 
 import { motion } from "framer-motion";
 import styles from "./PortfolioSection.module.css";
-import FloatingCard from "./FloatingCard";
-import { useMotionValue, useSpring } from "framer-motion";
 
-interface Event {
+interface PortfolioEvent {
   id: string;
   cover_url?: string;
   title: string;
 }
 
 interface PortfolioSectionProps {
-  events: Event[];
+  events: PortfolioEvent[];
 }
 
 export default function PortfolioSection({ events }: PortfolioSectionProps) {
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 50, damping: 20 });
-  const springY = useSpring(mouseY, { stiffness: 50, damping: 20 });
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -38,11 +31,12 @@ export default function PortfolioSection({ events }: PortfolioSectionProps) {
       y: 0,
       transition: {
         duration: 0.6,
+        ease: [0.16, 1, 0.3, 1] as const
       },
     },
   };
 
-  const displayEvents = events.slice(0, 6);
+  const displayEvents = Array.isArray(events) ? events.slice(0, 6) : [];
 
   return (
     <section className={styles.section} id="portfolio">
@@ -68,7 +62,7 @@ export default function PortfolioSection({ events }: PortfolioSectionProps) {
           whileInView="visible"
           viewport={{ once: true }}
         >
-          {displayEvents.map((event, index) => (
+          {displayEvents.map((event) => (
             <motion.div
               key={event.id}
               className={styles.card}
@@ -76,7 +70,11 @@ export default function PortfolioSection({ events }: PortfolioSectionProps) {
             >
               {event.cover_url && (
                 <div className={styles.imageWrapper}>
-                  <img src={event.cover_url} alt={event.title} className={styles.image} />
+                  <img 
+                    src={event.cover_url} 
+                    alt={event.title} 
+                    className={styles.image} 
+                  />
                   <div className={styles.overlay}>
                     <h3>{event.title}</h3>
                   </div>
