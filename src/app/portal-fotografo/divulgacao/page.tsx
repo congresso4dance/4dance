@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import styles from '../fotografo.module.css';
-import { Share2, QrCode, Download, Copy, ExternalLink, Instagram, Facebook } from 'lucide-react';
+import { Share2, QrCode, Download, Copy, ExternalLink, Camera } from 'lucide-react';
 
 export default function PhotographerDivulgacao() {
   const [events, setEvents] = useState<any[]>([]);
@@ -95,7 +95,7 @@ export default function PhotographerDivulgacao() {
                     gap: '8px',
                     cursor: 'pointer'
                   }}>
-                    <Instagram size={18} /> Arte para Story
+                    <Camera size={18} /> Arte para Story
                   </button>
                 </div>
               </div>
