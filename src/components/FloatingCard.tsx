@@ -57,7 +57,7 @@ export default function FloatingCard({
       transition={{ 
         delay: index * 0.1, 
         duration: 1, 
-        ease: [0.16, 1, 0.3, 1] 
+        ease: [0.16, 1, 0.3, 1] as any
       }}
     >
       <div className={styles.cardInner}>

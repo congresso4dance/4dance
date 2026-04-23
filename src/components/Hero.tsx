@@ -120,7 +120,7 @@ export default function Hero({ events }: HeroProps) {
                   style={{
                     position: 'absolute',
                     ...positions[i % positions.length]
-                  }}
+                  } as any}
                 />
               )
             ))}
