@@ -92,8 +92,8 @@ export default function GlobalAIWorker() {
     setCurrentAction("Buscando lote de fotos...");
     let pending;
     try {
-        // Aumentado para 30 para manter o motor alimentado
-        pending = await getPendingPhotos(30);
+        // Aumentado para 50 para carga total massiva
+        pending = await getPendingPhotos(50);
     } catch (err: any) {
         addLog(`Falha: ${err.message}. Retentando em 5s...`, "warning");
         setTimeout(() => processNextBatch(totalProcessedSinceStart), 5000);
@@ -107,9 +107,9 @@ export default function GlobalAIWorker() {
         return;
     }
 
-    addLog(`Lote de ${pending.length} fotos recebido. Analisando em PARALELO...`, "info");
+    addLog(`Lote de ${pending.length} fotos recebido. Analisando em TURBO (6x)...`, "info");
 
-    const CONCURRENCY = 3; // 3 fotos ao mesmo tempo
+    const CONCURRENCY = 6; // 6 fotos ao mesmo tempo para carga total
     for (let i = 0; i < pending.length; i += CONCURRENCY) {
         if (!isProcessingRef.current) break;
         
@@ -217,10 +217,10 @@ export default function GlobalAIWorker() {
             <div className={styles.progressWrapper}>
               <div className={styles.progressInfo}>
                 <span>{currentAction}</span>
-                <span>{progress}%</span>
+                <span>{Math.round((stats.indexed / stats.total) * 100)}% Global</span>
               </div>
               <div className={styles.progressBar}>
-                <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+                <div className={styles.progressFill} style={{ width: `${(stats.indexed / stats.total) * 100}%` }} />
               </div>
             </div>
           )}
