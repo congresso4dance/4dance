@@ -15,8 +15,8 @@ const eventSchema = z.object({
   event_date: z.string().min(1, 'Data é obrigatória'),
   location: z.string().optional(),
   styles: z.string().optional(),
-  is_public: z.boolean().default(true),
-  is_paid: z.boolean().default(true),
+  is_public: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+  is_paid: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
   photo_price: z.coerce.number().min(0, 'Valor inválido').default(10.00),
   password: z.string().optional(),
 });
