@@ -55,7 +55,7 @@ export default function EcosystemSection() {
       opacity: 1, 
       y: 0, 
       scale: 1,
-      transition: { duration: 0.8, ease: "easeOut" }
+      transition: { duration: 0.8 }
     },
   };
 
@@ -67,7 +67,7 @@ export default function EcosystemSection() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          transition={{ duration: 0.8 }}
         >
           <span className={styles.label}>Infraestrutura 4D</span>
           <h2 className={styles.title}>O Ecossistema da Excelência</h2>
