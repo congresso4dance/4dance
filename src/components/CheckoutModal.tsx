@@ -100,7 +100,7 @@ export default function CheckoutModal({ isOpen, onClose, items, total, savings, 
                         <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', display: 'block' }}>Foto HD #{item.id.slice(-6)}</span>
                         <strong style={{ fontSize: '1rem', color: 'var(--primary)' }}>R$ {item.price.toFixed(2)}</strong>
                       </div>
-                      <button className={styles.removeBtn} onClick={() => onRemove(item.id)} style={{ color: 'rgba(255,255,255,0.2)', hover: { color: '#ef4444' } }}>
+            <button className={styles.removeBtn} onClick={() => onRemove(item.id)} style={{ color: "rgba(255,255,255,0.2)" }}>
                         <Trash2 size={16} />
                       </button>
                     </div>
