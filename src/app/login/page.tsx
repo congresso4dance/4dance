@@ -49,6 +49,8 @@ export default function LoginPage() {
         const adminRoles = ['owner', 'admin', 'editor', 'assistant'];
         if (adminRoles.includes(profile.role.toLowerCase())) {
           window.location.href = '/admin';
+        } else if (profile.role === 'PHOTOGRAPHER') {
+          window.location.href = '/portal-fotografo';
         } else {
           window.location.href = '/minhas-fotos';
         }
