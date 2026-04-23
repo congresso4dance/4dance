@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import styles from '../../../fotografo.module.css';
+import styles from '../../fotografo.module.css';
 import { Camera, Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
