@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, LogIn, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -68,6 +68,10 @@ export default function LoginPage() {
         className={styles.card}
       >
         <div className={styles.header}>
+          <Link href="/" className={styles.backLink}>
+            <ArrowLeft size={18} />
+            <span>Voltar para o site</span>
+          </Link>
           <div className={styles.logoIcon}>
             <LogIn size={32} color="var(--primary)" />
           </div>

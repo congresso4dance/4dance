@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import styles from '../login/login.module.css'; // Reusing and extending login styles
 import { sendWelcomeEmail } from '@/app/actions/email-actions';
 
@@ -97,6 +97,13 @@ export default function SignupPage() {
     <main className={styles.main}>
       <div className={styles.glassBackground}></div>
       
+      <div className={styles.headerSection}>
+        <Link href="/" className={styles.backLink}>
+          <ArrowLeft size={18} />
+          <span>Voltar para o site</span>
+        </Link>
+      </div>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
