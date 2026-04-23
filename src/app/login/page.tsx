@@ -46,7 +46,8 @@ export default function LoginPage() {
         window.location.href = '/admin';
       } else {
         // Dynamic Redirect
-        if (profile.role === 'ADMIN') {
+        const adminRoles = ['owner', 'admin', 'editor', 'assistant'];
+        if (adminRoles.includes(profile.role.toLowerCase())) {
           window.location.href = '/admin';
         } else {
           window.location.href = '/minhas-fotos';
