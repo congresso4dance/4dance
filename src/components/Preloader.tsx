@@ -48,7 +48,7 @@ export default function Preloader() {
               className={styles.progress}
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ duration: 2, ease: "easeInOut" }}
+              transition={{ duration: 2, ease: [0.42, 0, 0.58, 1] }}
             />
           </div>
 
