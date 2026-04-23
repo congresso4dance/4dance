@@ -31,7 +31,7 @@ export default async function Home() {
       <Hero events={events || []} />
       
       {/* Narrative Flow */}
-      <PortfolioSection events={events || []} />
+      <PortfolioSection />
       
       <TimelineSection />
       
