@@ -382,7 +382,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
                     <motion.div 
                       className={styles.scanLine}
                       animate={{ top: ['0%', '100%', '0%'] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: [0, 0, 1, 1] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: [0, 0, 1, 1] as const }}
                     />
                     <div className={styles.scanOverlay} />
                   </div>

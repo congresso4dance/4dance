@@ -82,7 +82,7 @@ export default function Hero({ events }: HeroProps) {
           <motion.div 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] as const }}
             className={styles.innerContent}
           >
             <h1 className={styles.title}>
