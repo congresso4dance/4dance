@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,18 +11,21 @@ import { useRouter } from 'next/navigation';
 import { logAdminAction } from '@/utils/admin-logger';
 import styles from './new-event.module.css';
 
+
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
   event_date: z.string().min(1, 'Data é obrigatória'),
   location: z.string().optional(),
   styles: z.string().optional(),
-  is_public: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
-  is_paid: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+  is_public: z.boolean().default(true),
+  is_paid: z.boolean().default(true),
   photo_price: z.coerce.number().min(0, 'Valor inválido').default(10.00),
   password: z.string().optional(),
 });
 
+
 type EventFormValues = z.infer<typeof eventSchema>;
+
 
 export default function NewEventPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -30,18 +34,22 @@ export default function NewEventPage() {
   const router = useRouter();
   const supabase = createClient();
 
+
   const { register, handleSubmit, formState: { errors } } = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
   });
+
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles((prev) => [...prev, ...acceptedFiles]);
   }, []);
 
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
     accept: { 'image/*': [] }
   });
+
 
   const onSubmit = async (data: any) => {
     if (files.length === 0) {
@@ -49,8 +57,10 @@ export default function NewEventPage() {
       return;
     }
 
+
     setUploading(true);
     const slug = data.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+
 
     // 1. Create Event
     const { data: event, error: eventError } = await supabase
@@ -60,114 +70,3 @@ export default function NewEventPage() {
         styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles,
         slug,
         is_public: data.is_public === 'true' || data.is_public === true
-      }])
-      .select()
-      .single();
-
-    if (eventError) {
-      alert('Erro ao criar evento: ' + eventError.message);
-      setUploading(false);
-      return;
-    }
-
-    // NEW: Log the event creation
-    await logAdminAction('CREATE_EVENT', { title: data.title }, event.id);
-
-    // 2. Upload Photos
-    let count = 0;
-    for (const file of files) {
-      const fileName = `${event.id}/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('event-photos')
-        .upload(fileName, file);
-
-      if (uploadData) {
-        await supabase.from('photos').insert([{
-          event_id: event.id,
-          storage_path: uploadData.path,
-          full_res_url: supabase.storage.from('event-photos').getPublicUrl(uploadData.path).data.publicUrl
-        }]);
-      }
-      
-      count++;
-      setProgress(Math.round((count / files.length) * 100));
-    }
-
-    setUploading(false);
-    alert('Evento criado com sucesso!');
-    router.push('/admin');
-  };
-
-  return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Criar Novo Evento</h1>
-
-      <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-        <div className={styles.formGrid}>
-          <div className={styles.inputGroup}>
-            <label>Título do Evento</label>
-            <input {...register('title')} placeholder="Ex: Festival Zouk Lambada 2024" />
-            {errors.title && <span className={styles.error}>{errors.title.message}</span>}
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label>Data</label>
-            <input type="date" {...register('event_date')} />
-            {errors.event_date && <span className={styles.error}>{errors.event_date.message}</span>}
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label>Localização</label>
-            <input {...register('location')} placeholder="Ex: São Paulo, SP" />
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label>Estilos (separados por vírgula)</label>
-            <input {...register('styles')} placeholder="Ex: Zouk, Lambada, Samba" />
-          </div>
-
-          <div className={styles.inputGroup} style={{ background: 'rgba(206, 172, 102, 0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(206, 172, 102, 0.2)' }}>
-            <label style={{ color: 'var(--primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input type="checkbox" {...register('is_paid')} /> 💰 Evento Pago
-            </label>
-            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1rem' }}>
-              Se desmarcado, todas as fotos serão gratuitas para download.
-            </p>
-            
-            <label>Preço por Foto (R$)</label>
-            <input type="number" step="0.01" {...register('photo_price')} />
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input type="checkbox" {...register('is_public')} /> Público
-            </label>
-          </div>
-        </div>
-
-        <div className={styles.dropzone} {...getRootProps()}>
-          <input {...getInputProps()} />
-          {isDragActive ? (
-            <p>Solte as fotos aqui...</p>
-          ) : (
-            <p>Arraste e solte as fotos aqui, ou clique para selecionar</p>
-          )}
-          {files.length > 0 && (
-            <p className={styles.fileCount}>{files.length} fotos selecionadas</p>
-          )}
-        </div>
-
-        {uploading && (
-          <div className={styles.progressContainer}>
-            <div className={styles.progressBar} style={{ width: `${progress}%` }}></div>
-            <span>Subindo fotos: {progress}%</span>
-          </div>
-        )}
-
-        <button type="submit" className={styles.submitBtn} disabled={uploading}>
-          {uploading ? 'Processando...' : 'Criar Evento e Subir Fotos'}
-        </button>
-      </form>
-    </div>
-  );
-}
