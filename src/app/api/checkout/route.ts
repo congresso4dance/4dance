@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { calculateUnitPrice } from '@/utils/pricing';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-01-27-acacia' as any,
@@ -21,6 +22,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Carrinho vazio' }, { status: 400 });
     }
 
+    const unitPrice = calculateUnitPrice(items.length);
+    const finalAmount = items.length * unitPrice;
+
     // 1. Create Order in DB (Pending)
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -28,7 +32,7 @@ export async function POST(req: Request) {
         user_id: user.id,
         status: 'pending',
         items: items.map((i: any) => i.id),
-        amount: items.reduce((acc: number, i: any) => acc + i.price, 0),
+        amount: finalAmount,
       })
       .select()
       .single();
@@ -45,7 +49,7 @@ export async function POST(req: Request) {
             name: `Foto 4Dance - ${item.id}`,
             images: [item.url],
           },
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: Math.round(unitPrice * 100),
         },
         quantity: 1,
       })),

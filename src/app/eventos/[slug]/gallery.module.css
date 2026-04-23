@@ -432,8 +432,8 @@
 
 .lightboxContent {
   position: relative;
-  width: 90vw;
-  height: 85vh;
+  width: 80vw;
+  height: 75vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -461,6 +461,8 @@
 }
 
 .photoCounter {
+  position: absolute;
+  top: calc(100% + 40px); /* Mais respiro abaixo da foto */
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);

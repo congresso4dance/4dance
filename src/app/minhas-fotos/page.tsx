@@ -36,7 +36,7 @@ export default function MinhasFotosPortal() {
 
       // 2. Load Profile
       const { data: profile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -51,7 +51,7 @@ export default function MinhasFotosPortal() {
   }, []);
 
   async function loadModels() {
-    const MODEL_URL = '/models';
+    const MODEL_URL = `${window.location.origin}/models`;
     try {
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -99,16 +99,25 @@ export default function MinhasFotosPortal() {
       }
 
       // 2. Local refinement for precision (The one you loved)
+      const photoIds = matchData.map((m: any) => m.photo_id);
+      
+      const { data: faceData } = await supabase
+        .from('photo_faces')
+        .select('photo_id, embedding')
+        .in('photo_id', photoIds);
+
       const faceMatcher = new faceapi.FaceMatcher(detection.descriptor, 0.5);
       const matchedPhotoIds: string[] = [];
 
-      matchData.forEach((face: any) => {
-        const desc = new Float32Array(JSON.parse(face.embedding));
-        const match = faceMatcher.findBestMatch(desc);
-        if (match.label !== 'unknown') {
-          matchedPhotoIds.push(face.photo_id);
-        }
-      });
+      if (faceData) {
+        faceData.forEach((face: any) => {
+          const desc = new Float32Array(JSON.parse(face.embedding));
+          const match = faceMatcher.findBestMatch(desc);
+          if (match.label !== 'unknown') {
+            matchedPhotoIds.push(face.photo_id);
+          }
+        });
+      }
 
       if (matchedPhotoIds.length === 0) {
         alert("Nenhuma foto certeira encontrada. Tente outra selfie com iluminação diferente!");

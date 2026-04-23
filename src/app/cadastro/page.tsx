@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, User, ArrowRight, CheckCircle2 } from 'lucide-react';
 import styles from '../login/login.module.css'; // Reusing and extending login styles
+import { sendWelcomeEmail } from '@/app/actions/email-actions';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -43,7 +44,7 @@ export default function SignupPage() {
     if (authData.user) {
       // 2. Create Profile
       const { error: profileError } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert([
           { 
             id: authData.user.id, 
@@ -56,9 +57,16 @@ export default function SignupPage() {
         console.error("Erro ao criar perfil:", profileError);
       }
 
+      // 3. Send Welcome Email (Instant via Resend)
+      try {
+        await sendWelcomeEmail(email, fullName);
+      } catch (emailErr) {
+        console.error("Erro ao enviar e-mail:", emailErr);
+      }
+
       setSuccess(true);
       setLoading(false);
-      setTimeout(() => router.push('/login'), 3000);
+      setTimeout(() => router.push('/login'), 5000);
     }
   };
 

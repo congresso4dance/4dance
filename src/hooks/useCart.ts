@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { trackActivity } from '@/app/actions/crm-actions';
+import { createClient } from '@/utils/supabase/client';
+import { calculateDiscountInfo } from '@/utils/pricing';
 
 export interface CartItem {
   id: string;
@@ -34,11 +37,22 @@ export function useCart(eventId?: string) {
     }
   }, [items, isLoaded]);
 
-  const addToCart = (item: CartItem) => {
+  const addToCart = async (item: CartItem) => {
     setItems(prev => {
       if (prev.find(i => i.id === item.id)) return prev;
       return [...prev, item];
     });
+
+    // CRM Tracking
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      trackActivity(user.email, 'CART', item.eventId, { 
+        photo_id: item.id,
+        price: item.price,
+        event_title: item.eventTitle
+      });
+    }
   };
 
   const removeFromCart = (itemId: string) => {
@@ -53,7 +67,7 @@ export function useCart(eventId?: string) {
     return items.some(i => i.id === itemId);
   };
 
-  const total = items.reduce((acc, item) => acc + item.price, 0);
+  const { discountedTotal, savings, originalTotal, unitPrice } = calculateDiscountInfo(items.length, items.reduce((acc, item) => acc + item.price, 0));
 
   return {
     items,
@@ -61,7 +75,10 @@ export function useCart(eventId?: string) {
     removeFromCart,
     clearCart,
     isInCart,
-    total,
+    total: discountedTotal,
+    originalTotal,
+    savings,
+    unitPrice,
     count: items.length,
     isLoaded
   };

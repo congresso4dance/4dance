@@ -86,7 +86,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
                 className={styles.cartBtn}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDownload(photo.full_res_url);
+                  handleDownload(photo);
                 }}
               >
                 <Download size={16} /> Baixar HD Grátis
@@ -111,9 +111,6 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
 
 export default function GalleryContent({ event, photos: initialPhotos }: { event: any, photos: any[] }) {
   const [allPhotos, setAllPhotos] = useState<any[]>(initialPhotos);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(initialPhotos.length === 100);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
@@ -321,7 +318,7 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
   return (
     <>
       <div className={styles.searchBarRow}>
-        <GallerySearch photos={allPhotos} onFilter={setFilteredPhotos} />
+        <GallerySearch photos={allPhotos} eventId={event.id} onFilter={setFilteredPhotos} />
         <div className={styles.filterGroup}>
           <button 
             className={`${styles.filterBtn} ${showOnlyFavorites ? styles.active : ''}`}
@@ -511,6 +508,8 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
         onClose={() => setShowCart(false)}
         items={items}
         total={total}
+        savings={items.length > 0 ? (items.length * 10) - total : 0} 
+        originalTotal={items.length * 10}
         onRemove={removeFromCart}
         onSuccess={() => {
           clearCart();

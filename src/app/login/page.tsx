@@ -36,7 +36,7 @@ export default function LoginPage() {
     if (authData.user) {
       // 2. Fetch User Profile to check Role
       const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('role')
         .eq('id', authData.user.id)
         .single();

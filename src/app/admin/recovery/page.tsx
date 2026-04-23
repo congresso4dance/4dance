@@ -8,12 +8,12 @@ export default async function SalesRecoveryPage() {
   const supabase = await createClient();
 
   // 1. Fetch pending orders with user info
-  // Note: We'll join with user_profiles and then manually link with leads by email
+  // Note: We'll join with profiles and then manually link with leads by email
   const { data: pendingOrders } = await supabase
     .from('orders')
     .select(`
       *,
-      user_profiles (full_name, email)
+      profiles (full_name, email)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
@@ -27,12 +27,12 @@ export default async function SalesRecoveryPage() {
   const leadMap = new Map(leads?.map(l => [l.email, l]) || []);
 
   const abandonedCarts = pendingOrders?.map(order => {
-    const email = order.user_profiles?.email;
+    const email = order.profiles?.email;
     const lead = leadMap.get(email);
     
     return {
       ...order,
-      customerName: order.user_profiles?.full_name || lead?.name || 'Cliente Desconhecido',
+      customerName: order.profiles?.full_name || lead?.name || 'Cliente Desconhecido',
       customerEmail: email,
       whatsapp: lead?.whatsapp,
       isOld: new Date(order.created_at).getTime() < new Date().getTime() - (2 * 60 * 60 * 1000)

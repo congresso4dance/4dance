@@ -7,8 +7,9 @@ import { verifyFacesWithAI } from "@/app/actions/ai-verification";
 import styles from "./GallerySearch.module.css";
 import { motion, AnimatePresence } from "framer-motion";
 import * as faceapi from 'face-api.js';
+import { trackActivity } from "@/app/actions/crm-actions";
 
-export default function GallerySearch({ photos, onFilter }: { photos: any[], onFilter: (filteredPhotos: any[] | null) => void }) {
+export default function GallerySearch({ photos, eventId, onFilter }: { photos: any[], eventId: string, onFilter: (filteredPhotos: any[] | null) => void }) {
   const [isScanning, setIsScanning] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [referenceDescriptors, setReferenceDescriptors] = useState<Float32Array[]>([]);
@@ -106,7 +107,8 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         const { data: matchData, error: matchError } = await supabase.rpc('match_photo_faces', {
           query_embedding: embeddingString,
           match_threshold: config.match_threshold,
-          match_count: config.max_search_results
+          match_count: config.max_search_results,
+          p_event_id: eventId // Filtro por evento ativado
         });
 
         if (matchError) throw matchError;
@@ -138,6 +140,15 @@ export default function GallerySearch({ photos, onFilter }: { photos: any[], onF
         }
 
         const currentEventId = photoData[0].event_id;
+
+        // 1.5 Track Activity (IA SEARCH) - Pegamos o email se logado ou associamos depois
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          trackActivity(user.email, 'SCAN', eventId, { 
+            results_count: photoIds.length,
+            search_type: 'facial'
+          });
+        }
 
         // Gemini verificado ou Fallback: Refinamento com a lógica do "Minhas Fotos"
         setStatus("Refinando resultados com precisão Elite... ✨");

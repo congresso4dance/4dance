@@ -11,11 +11,13 @@ interface CheckoutModalProps {
   onClose: () => void;
   items: any[];
   total: number;
+  savings: number;
+  originalTotal: number;
   onRemove: (id: string) => void;
   onSuccess: () => void;
 }
 
-export default function CheckoutModal({ isOpen, onClose, items, total, onRemove, onSuccess }: CheckoutModalProps) {
+export default function CheckoutModal({ isOpen, onClose, items, total, savings, originalTotal, onRemove, onSuccess }: CheckoutModalProps) {
   const [step, setStep] = useState<'summary' | 'payment'>('summary');
   const [method, setMethod] = useState<'pix' | 'card' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -111,9 +113,23 @@ export default function CheckoutModal({ isOpen, onClose, items, total, onRemove,
                 </div>
 
                 <div className={styles.checkoutFooter} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
-                  <div className={styles.totalRow} style={{ marginBottom: '1.5rem' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.5)' }}>Total ({items.length} fotos)</span>
-                    <strong style={{ fontSize: '1.5rem', fontWeight: 800 }}>R$ {total.toFixed(2)}</strong>
+                  <div className={styles.totalRow} style={{ marginBottom: '1.5rem', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.5)' }}>Subtotal ({items.length} fotos)</span>
+                      <span style={{ textDecoration: savings > 0 ? 'line-through' : 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem' }}>
+                        R$ {originalTotal.toFixed(2)}
+                      </span>
+                    </div>
+                    {savings > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', background: 'rgba(16, 185, 129, 0.1)', padding: '8px 12px', borderRadius: '12px', border: '1px dashed rgba(16, 185, 129, 0.3)', margin: '8px 0' }}>
+                        <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 700 }}>PACOTE ELITE ATIVADO! ✨</span>
+                        <span style={{ color: '#10b981', fontWeight: 800 }}>- R$ {savings.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginTop: '0.5rem' }}>
+                      <span style={{ color: 'white', fontWeight: 500 }}>Total Final</span>
+                      <strong style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)' }}>R$ {total.toFixed(2)}</strong>
+                    </div>
                   </div>
                   <button 
                     className={styles.checkoutActionBtn} 
