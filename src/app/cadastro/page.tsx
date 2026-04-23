@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [isPhotographer, setIsPhotographer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -49,7 +50,7 @@ export default function SignupPage() {
           { 
             id: authData.user.id, 
             full_name: fullName,
-            role: 'CLIENT'
+            role: isPhotographer ? 'PHOTOGRAPHER' : 'CLIENT'
           }
         ]);
 
@@ -144,6 +145,45 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)} 
               required 
             />
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
+            <button 
+              type="button"
+              onClick={() => setIsPhotographer(false)}
+              style={{ 
+                flex: 1, 
+                padding: '0.8rem', 
+                borderRadius: '8px', 
+                border: '1px solid', 
+                borderColor: !isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                background: !isPhotographer ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+                color: !isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Sou Dançarino
+            </button>
+            <button 
+              type="button"
+              onClick={() => setIsPhotographer(true)}
+              style={{ 
+                flex: 1, 
+                padding: '0.8rem', 
+                borderRadius: '8px', 
+                border: '1px solid', 
+                borderColor: isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                background: isPhotographer ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+                color: isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Sou Fotógrafo
+            </button>
           </div>
 
           {error && (
