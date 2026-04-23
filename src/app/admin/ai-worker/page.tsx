@@ -95,7 +95,7 @@ export default function GlobalAIWorker() {
         // Aumentado para 30 para manter o motor alimentado
         pending = await getPendingPhotos(30);
     } catch (err: any) {
-        addLog(`Erro de conexão. Retentando em 5s...`, "warning");
+        addLog(`Falha: ${err.message}. Retentando em 5s...`, "warning");
         setTimeout(() => processNextBatch(totalProcessedSinceStart), 5000);
         return;
     }

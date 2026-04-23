@@ -12,14 +12,22 @@ const supabaseAdmin = createClient(
  * Busca um lote de fotos pendentes de indexação
  */
 export async function getPendingPhotos(limit = 20) {
-  const { data, error } = await supabaseAdmin
-    .from('photos')
-    .select('id, full_res_url, event_id')
-    .eq('is_indexed', false)
-    .limit(limit);
-    
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('photos')
+      .select('id, full_res_url, event_id')
+      .eq('is_indexed', false)
+      .limit(limit);
+      
+    if (error) {
+      console.error("Supabase Error in getPendingPhotos:", error);
+      throw new Error(`DB Error: ${error.message}`);
+    }
+    return data;
+  } catch (err: any) {
+    console.error("Critical Error in getPendingPhotos:", err);
+    throw new Error(err.message || "Unknown Connection Error");
+  }
 }
 
 /**
