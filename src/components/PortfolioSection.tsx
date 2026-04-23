@@ -1,31 +1,26 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Camera, ShieldCheck, Zap, Globe, UserCheck, Lock } from "lucide-react";
 import styles from "./PortfolioSection.module.css";
+import FloatingCard from "./FloatingCard";
+import { useMotionValue, useSpring } from "framer-motion";
 
-const categories = [
-  {
-    id: 'dance',
-    title: 'Dança de Salão',
-    description: 'A essência do movimento em festivais e competições.',
-    image: '/images/category-dance.jpg'
-  },
-  {
-    id: 'events',
-    title: 'Eventos Corporativos',
-    description: 'Profissionalismo e elegância para o seu negócio.',
-    image: '/images/category-events.jpg'
-  },
-  {
-    id: 'portraits',
-    title: 'Ensaios Individuais',
-    description: 'Expressão e identidade capturadas com sensibilidade.',
-    image: '/images/category-portraits.jpg'
-  }
-];
+interface Event {
+  id: string;
+  cover_url?: string;
+  title: string;
+}
 
-export default function PortfolioSection() {
+interface PortfolioSectionProps {
+  events: Event[];
+}
+
+export default function PortfolioSection({ events }: PortfolioSectionProps) {
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springX = useSpring(mouseX, { stiffness: 50, damping: 20 });
+  const springY = useSpring(mouseY, { stiffness: 50, damping: 20 });
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -46,6 +41,8 @@ export default function PortfolioSection() {
       },
     },
   };
+
+  const displayEvents = events.slice(0, 6);
 
   return (
     <section className={styles.section} id="portfolio">
@@ -71,21 +68,20 @@ export default function PortfolioSection() {
           whileInView="visible"
           viewport={{ once: true }}
         >
-          {categories.map((category) => (
+          {displayEvents.map((event, index) => (
             <motion.div
-              key={category.id}
+              key={event.id}
               className={styles.card}
               variants={itemVariants}
-              whileHover={{ y: -10 }}
             >
-              <div className={styles.imageWrapper}>
-                {/* Placeholder for images */}
-                <div className={styles.placeholder} />
-                <div className={styles.overlay}>
-                  <h3>{category.title}</h3>
-                  <p>{category.description}</p>
+              {event.cover_url && (
+                <div className={styles.imageWrapper}>
+                  <img src={event.cover_url} alt={event.title} className={styles.image} />
+                  <div className={styles.overlay}>
+                    <h3>{event.title}</h3>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           ))}
         </motion.div>
