@@ -13,7 +13,8 @@ import {
   LogOut,
   Upload,
   Users,
-  BadgeDollarSign
+  BadgeDollarSign,
+  Activity
 } from 'lucide-react';
 
 export default async function AdminLayout({
@@ -88,6 +89,11 @@ export default async function AdminLayout({
               <Link href="/admin/insights" className={styles.navLink}>
                 <BrainCircuit size={20} />
                 <span>Insights & IA</span>
+                <ChevronRight size={14} className={styles.chevron} />
+              </Link>
+              <Link href="/admin/ai-worker" className={styles.navLink}>
+                <Activity size={20} />
+                <span>Indexador de Rostos</span>
                 <ChevronRight size={14} className={styles.chevron} />
               </Link>
               <Link href="/admin/logs" className={styles.navLink}>
