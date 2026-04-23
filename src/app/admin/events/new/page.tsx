@@ -15,9 +15,9 @@ const eventSchema = z.object({
   event_date: z.string().min(1, 'Data é obrigatória'),
   location: z.string().optional().nullable(),
   styles: z.string().optional().nullable(),
-  is_public: z.boolean(),
-  is_paid: z.boolean(),
-  photo_price: z.coerce.number().min(0, 'Valor inválido'),
+  is_public: z.any().optional(),
+  is_paid: z.any().optional(),
+  photo_price: z.any().optional(),
   password: z.string().optional().nullable(),
 });
 
@@ -67,9 +67,11 @@ export default function NewEventPage() {
       .from('events')
       .insert([{ 
         ...data, 
+        is_public: data.is_public === 'true' || data.is_public === true,
+        is_paid: data.is_paid === 'true' || data.is_paid === true,
+        photo_price: Number(data.photo_price),
         styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles,
         slug,
-        is_public: data.is_public === 'true' || data.is_public === true
       }])
       .select()
       .single();
