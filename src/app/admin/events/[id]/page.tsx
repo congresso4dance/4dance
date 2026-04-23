@@ -14,7 +14,7 @@ const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
   event_date: z.string().min(1, 'Data é obrigatória'),
   location: z.string().optional(),
-  styles: z.string().transform((val) => typeof val === 'string' ? val.split(',').map(s => s.trim()) : val),
+  styles: z.string().optional(),
   is_public: z.boolean(),
   is_paid: z.boolean().default(true),
   photo_price: z.coerce.number().min(0, 'Valor inválido').default(10.00),
@@ -85,7 +85,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     setSaving(true);
     const { error } = await supabase
       .from('events')
-      .update({ ...data })
+      .update({ 
+        ...data,
+        styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles
+      })
       .eq('id', id);
 
     if (error) {
