@@ -86,7 +86,8 @@ export default function MinhasFotosPortal() {
       const { data: matchData, error: matchError } = await supabase.rpc('match_photo_faces', {
         query_embedding: embeddingString,
         match_threshold: 0.8, // Mais permissivo para Recall global
-        match_count: 50
+        match_count: 50,
+        p_event_id: null
       });
 
       if (matchError) throw matchError;
