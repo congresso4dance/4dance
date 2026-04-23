@@ -43,18 +43,15 @@ export default function LoginPage() {
 
       if (profileError || !profile) {
         // Fallback for old users or missing profiles
-        router.push('/admin');
+        window.location.href = '/admin';
       } else {
         // Dynamic Redirect
         if (profile.role === 'ADMIN') {
-          router.push('/admin');
+          window.location.href = '/admin';
         } else {
-          router.push('/minhas-fotos');
+          window.location.href = '/minhas-fotos';
         }
       }
-      
-      router.refresh();
-    }
   };
 
   return (

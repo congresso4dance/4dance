@@ -23,7 +23,7 @@ export default async function EventsListPage({
   // 2. Fetch Filtered Events
   let query = supabase
     .from('events')
-    .select('*, photos(count)')
+    .select('*')
     .eq('is_public', true)
     .order('event_date', { ascending: false });
 
@@ -66,7 +66,6 @@ export default async function EventsListPage({
         <div className={styles.container}>
           <div className={styles.grid}>
             {events?.map((event) => {
-              const photoCount = event.photos?.[0]?.count || 0;
               return (
                 <Link key={event.id} href={`/eventos/${event.slug}`} className={styles.eventCard}>
                   <div className={styles.cardImage}>
@@ -87,7 +86,7 @@ export default async function EventsListPage({
                   </div>
                   <div className={styles.cardContent}>
                     <h3>{event.title}</h3>
-                    <span className={styles.itemCount}>{photoCount} itens</span>
+                    <span className={styles.itemCount}>Visualizar Galeria</span>
                   </div>
                 </Link>
               );

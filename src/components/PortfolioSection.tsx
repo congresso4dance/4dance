@@ -65,7 +65,7 @@ export default function PortfolioSection({ events }: PortfolioSectionProps) {
           {displayEvents.map((event) => (
             <motion.div
               key={event.id}
-              className={styles.card}
+              className={styles.portfolioItem}
               variants={itemVariants}
             >
               {event.cover_url && (
