@@ -18,6 +18,8 @@ const eventSchema = z.object({
   is_public: z.any().optional(),
   is_paid: z.any().optional(),
   photo_price: z.any().optional(),
+  commission_rate: z.any().optional(),
+  photographer_id: z.string().optional().nullable(),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -28,12 +30,18 @@ interface Photo {
   storage_path: string;
 }
 
-import { Trash2, CheckCircle2, X } from 'lucide-react';
+interface Photographer {
+  id: string;
+  full_name: string;
+}
+
+import { Trash2, CheckCircle2, X, Wallet, Camera } from 'lucide-react';
 import { logAdminAction } from '@/utils/admin-logger';
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photographers, setPhotographers] = useState<Photographer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
@@ -64,9 +72,19 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           is_public: event.is_public,
           is_paid: event.is_paid ?? true,
           photo_price: event.photo_price ?? 15.00,
+          commission_rate: event.commission_rate ?? 0.10,
+          photographer_id: event.photographer_id || '',
         });
         setCoverUrl(event.cover_url || '');
       }
+
+      // 2. Fetch Photographers
+      const { data: photogs } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('role', 'PHOTOGRAPHER');
+      
+      if (photogs) setPhotographers(photogs);
 
       // 2. Fetch Photos
       const { data: photosData } = await supabase
@@ -90,6 +108,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         is_public: data.is_public === 'true' || data.is_public === true,
         is_paid: data.is_paid === 'true' || data.is_paid === true,
         photo_price: Number(data.photo_price),
+        commission_rate: Number(data.commission_rate),
+        photographer_id: data.photographer_id || null,
         styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles
       })
       .eq('id', id);
@@ -229,8 +249,40 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             <input type="number" step="0.01" {...register('photo_price')} />
           </div>
 
+          {/* Marketplace Section */}
+          <div className={styles.inputGroup} style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', marginBottom: '1.2rem', color: '#fff' }}>
+              <Camera size={18} /> Marketplace do Fotógrafo
+            </h3>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Wallet size={16} /> Comissão da Plataforma (%)
+              </label>
+              <input 
+                type="number" 
+                step="0.001" 
+                {...register('commission_rate')} 
+                placeholder="Ex: 0.100 para 10%" 
+              />
+              <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>
+                Quanto a sua plataforma ganha sobre cada foto vendida.
+              </p>
+            </div>
+
+            <div>
+              <label>Fotógrafo Responsável</label>
+              <select {...register('photographer_id')} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: '#111', border: '1px solid #333', color: '#fff' }}>
+                <option value="">Selecione um fotógrafo...</option>
+                {photographers.map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className={styles.inputGroup}>
-            <label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="checkbox" {...register('is_public')} /> Público
             </label>
           </div>
@@ -259,24 +311,40 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   const fileExt = file.name.split('.').pop();
-                  const fileName = `${Math.random()}.${fileExt}`;
-                  const filePath = `${id}/${fileName}`;
+                  const baseName = `${Math.random()}`;
+                  const fullPath = `${id}/full_${baseName}.${fileExt}`;
+                  const thumbPath = `${id}/thumb_${baseName}.${fileExt}`;
 
-                  const { error: uploadError } = await supabase.storage
-                    .from('event-photos')
-                    .upload(filePath, file);
+                  try {
+                    // 1. Aplicar Marca d'água para a Thumbnail
+                    const { applyWatermark } = await import('@/utils/watermark');
+                    const wmBlob = await applyWatermark(file);
+                    const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
 
-                  if (!uploadError) {
-                    const { data: { publicUrl } } = supabase.storage
+                    // 2. Upload da versão original (Limpa)
+                    const { error: fullError } = await supabase.storage
                       .from('event-photos')
-                      .getPublicUrl(filePath);
+                      .upload(fullPath, file);
 
-                    await supabase.from('photos').insert({
-                      event_id: id,
-                      full_res_url: publicUrl,
-                      storage_path: filePath
-                    });
-                    successCount++;
+                    // 3. Upload da versão com marca d'água
+                    const { error: thumbError } = await supabase.storage
+                      .from('event-photos')
+                      .upload(thumbPath, wmFile);
+
+                    if (!fullError && !thumbError) {
+                      const fullUrl = supabase.storage.from('event-photos').getPublicUrl(fullPath).data.publicUrl;
+                      const thumbUrl = supabase.storage.from('event-photos').getPublicUrl(thumbPath).data.publicUrl;
+
+                      await supabase.from('photos').insert({
+                        event_id: id,
+                        full_res_url: fullUrl,
+                        thumbnail_url: thumbUrl,
+                        storage_path: fullPath
+                      });
+                      successCount++;
+                    }
+                  } catch (err) {
+                    console.error("Erro no upload/watermark:", err);
                   }
                 }
                 

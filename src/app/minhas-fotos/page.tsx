@@ -139,6 +139,32 @@ export default function MinhasFotosPortal() {
     setSearching(false);
   };
 
+  const showToast = (message: string) => {
+    alert(message); // Simplificado para o portal do cliente
+  };
+
+  const handleDownload = async (photo: any) => {
+    try {
+      const response = await fetch(`${window.location.origin}/api/photos/get-download-url?photoId=${photo.id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao obter link de download');
+      }
+
+      const signedUrl = data.url;
+      const link = document.createElement('a');
+      link.href = signedUrl;
+      link.setAttribute('download', `4dance-foto-${photo.id.slice(-6)}.jpg`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error("Download Error:", err);
+      alert(`❌ ${err.message || "Erro ao baixar foto"}`);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -245,7 +271,10 @@ export default function MinhasFotosPortal() {
                           <span>{isInCart(photo.id) ? 'No Carrinho' : `R$ ${photo.events?.photo_price}`}</span>
                         </button>
                       ) : (
-                        <button className={styles.actionBtn} onClick={() => window.open(photo.full_res_url)}>
+                        <button 
+                          className={styles.actionBtn} 
+                          onClick={() => handleDownload(photo)}
+                        >
                           <Download size={16} /> <span>Baixar Grátis</span>
                         </button>
                       )}
