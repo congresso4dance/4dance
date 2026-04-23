@@ -18,7 +18,7 @@ const steps = [
   {
     year: "2022",
     title: "Padrão de Excelência",
-    description: "Implementação de processos de seleção de elite e entrega ultra-rápida, elevando a experiência do cliente final."
+    description: "Implementação de processos de seleção de elite e entrega ultra-rápida, elevando a experiêcia do cliente final."
   },
   {
     year: "2024",
@@ -48,7 +48,7 @@ export default function TimelineSection() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8 }}
         >
           <span className={styles.label}>Nossa História</span>
           <h2>A Jornada do Olhar</h2>
@@ -72,7 +72,7 @@ export default function TimelineSection() {
                 initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, delay: index * 0.15, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.8, delay: index * 0.15 }}
               >
                 <div className={styles.dot} />
                 <span className={styles.year}>{step.year}</span>
