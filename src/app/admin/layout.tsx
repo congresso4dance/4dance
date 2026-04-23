@@ -11,7 +11,9 @@ import {
   ChevronRight,
   ExternalLink,
   LogOut,
-  Upload
+  Upload,
+  Users,
+  BadgeDollarSign
 } from 'lucide-react';
 
 export default async function AdminLayout({
@@ -28,6 +30,18 @@ export default async function AdminLayout({
   if (!user) {
     redirect('/login');
   }
+
+  // Buscar Role do Perfil
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const role = profile?.role || 'user';
+  const isOwner = role === 'owner';
+  const isAdmin = role === 'owner' || role === 'admin';
+  const isEditor = isAdmin || role === 'editor';
 
   return (
     <div className={styles.layout}>
@@ -52,28 +66,48 @@ export default async function AdminLayout({
             </Link>
           </div>
 
-          <div className={styles.navGroup}>
-            <span className={styles.groupLabel}>INTELIGÊNCIA</span>
-            <Link href="/admin/insights" className={styles.navLink}>
-              <BrainCircuit size={20} />
-              <span>Insights & IA</span>
-              <ChevronRight size={14} className={styles.chevron} />
-            </Link>
-            <Link href="/admin/logs" className={styles.navLink}>
-              <ShieldCheck size={20} />
-              <span>Segurança & Logs</span>
-              <ChevronRight size={14} className={styles.chevron} />
-            </Link>
-          </div>
+          {isAdmin && (
+            <div className={styles.navGroup}>
+              <span className={styles.groupLabel}>COMERCIAL</span>
+              <Link href="/admin/crm" className={styles.navLink}>
+                <Users size={20} />
+                <span>CRM Elite</span>
+                <ChevronRight size={14} className={styles.chevron} />
+              </Link>
+              <Link href="/admin/recovery" className={styles.navLink}>
+                <BadgeDollarSign size={20} />
+                <span>Recuperação</span>
+                <ChevronRight size={14} className={styles.chevron} />
+              </Link>
+            </div>
+          )}
 
-          <div className={styles.navGroup}>
-            <span className={styles.groupLabel}>SISTEMA</span>
-            <Link href="/admin/settings" className={styles.navLink}>
-              <Settings size={20} />
-              <span>Configurações</span>
-              <ChevronRight size={14} className={styles.chevron} />
-            </Link>
-          </div>
+          {isAdmin && (
+            <div className={styles.navGroup}>
+              <span className={styles.groupLabel}>INTELIGÊNCIA</span>
+              <Link href="/admin/insights" className={styles.navLink}>
+                <BrainCircuit size={20} />
+                <span>Insights & IA</span>
+                <ChevronRight size={14} className={styles.chevron} />
+              </Link>
+              <Link href="/admin/logs" className={styles.navLink}>
+                <ShieldCheck size={20} />
+                <span>Segurança & Logs</span>
+                <ChevronRight size={14} className={styles.chevron} />
+              </Link>
+            </div>
+          )}
+
+          {isOwner && (
+            <div className={styles.navGroup}>
+              <span className={styles.groupLabel}>SISTEMA</span>
+              <Link href="/admin/settings" className={styles.navLink}>
+                <Settings size={20} />
+                <span>Configurações</span>
+                <ChevronRight size={14} className={styles.chevron} />
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -84,7 +118,9 @@ export default async function AdminLayout({
           <div className={styles.userProfile}>
             <div className={styles.avatar}>{user.email?.charAt(0).toUpperCase()}</div>
             <div className={styles.userInfo}>
-              <span className={styles.userName}>Admin</span>
+              <span className={styles.userName}>
+                {role === 'owner' ? 'Dono Alpha' : role.charAt(0).toUpperCase() + role.slice(1)}
+              </span>
               <span className={styles.userEmail}>{user.email}</span>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import PurchaseEmail from '@/components/emails/PurchaseEmail';
+import { trackActivity } from '@/app/actions/crm-actions';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-01-27-acacia' as any,
@@ -46,6 +47,14 @@ export async function POST(req: Request) {
 
       if (error) {
         console.error('Erro ao atualizar pedido:', error);
+      }
+
+      // CRM Tracking: Log purchase
+      if (customerEmail) {
+        await trackActivity(customerEmail, 'PURCHASE', undefined, { 
+          order_id: orderId,
+          amount: amount
+        });
       }
 
       // Enviar de E-mail de Confirmação via Resend

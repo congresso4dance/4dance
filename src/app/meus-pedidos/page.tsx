@@ -31,7 +31,7 @@ export default function MyOrdersPage() {
 
       // 2. Load Profile
       const { data: userProfile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();

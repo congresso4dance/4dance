@@ -58,12 +58,13 @@ export default async function EventGalleryPage({ params }: Props) {
     notFound();
   }
 
-  // 2. Fetch All Photos (Rolagem lisa pelo cliente)
+  // 2. Fetch All Photos (Rolagem lisa pelo cliente - limite ampliado para 5000)
   const { data: photos, error: photosError } = await supabase
     .from('photos')
     .select('*')
     .eq('event_id', event.id)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
+    .range(0, 5000);
 
   return (
     <main className={styles.main}>

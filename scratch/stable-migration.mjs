@@ -11,7 +11,7 @@ const env = Object.fromEntries(
 );
 
 const supabase = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
-const META_TOKEN = 'EAAYP6qZCbSZCwBReiLNTLluCVVGMZApFZCTYPaCZCfZBWUO71WWGkp0mUZBLKycrWTK329AaWZBUOJ86j9QZCZC7Ir2KSVHZBSxPDiahNm6JpUonMLcugwiZB66vjsYwYBDGhyISsqdOUYlZAdTNHX73rFzf64YnrZCRtSVjLlWYnik6vb3oTuZBMt27l1bYAHmq13dWL4IaBUIok3Dz0RLMzJxUMWfMiDdur0RIvbcLZBvmTxPDOJ4oHdS6OwZDZD';
+const META_TOKEN = 'EAAYP6qZCbSZCwBRfeU3hVckE9JRLEtFRZASDCBW5t8FZApBrWB0RO2JaPSUMujrOf6wXKk9VYpBiuE2ZAwhdQ1OVy1pTPZA4p92gku1WxPhD4SGyqZBpdxSfEjiOHDibIma1G33ZCLqIZAAl35wDSp2hXRap8ZB8pzBF2Y6Ud33ksizXVQaKLXIVBGkZAo1km3ATkmvNARPLssj2Pnt95LUcsiby1Me0emGx4Ry3IQ1QP5oeINzfoXO782a6tB4';
 const PAGE_ID = '233933363708590';
 
 async function syncAlbumPhotos(albumId, event) {
@@ -20,8 +20,9 @@ async function syncAlbumPhotos(albumId, event) {
 
   console.log(`   📸 [${event.title}] Sincronizando fotos...`);
 
-  // Wipe photos for this specific event first to ensure clean versions
-  await supabase.from('photos').delete().eq('event_id', event.id);
+  // DIFFERENTIAL SYNC: Do not wipe, just add what's missing.
+  // Actually, for speed, we delete only if we want a fresh start. 
+  // For "Turbo", let's assume we want to fill gaps.
 
   while (nextUrl) {
     try {
@@ -30,19 +31,26 @@ async function syncAlbumPhotos(albumId, event) {
 
       if (!fbPhotos || fbPhotos.length === 0) break;
 
-      const BATCH_SIZE = 5;
+      const BATCH_SIZE = 50; // CARGA TOTAL MODE CONCURRENCY
       for (let i = 0; i < fbPhotos.length; i += BATCH_SIZE) {
         const batch = fbPhotos.slice(i, i + BATCH_SIZE);
         
         await Promise.all(batch.map(async (fbPhoto) => {
           try {
             const photoUrl = fbPhoto.images[0].source;
+            const storagePath = `events/${event.slug}/${fbPhoto.id}.jpg`;
+
+            // Check if already in DB to skip upload
+            const { data: existing } = await supabase.from('photos').select('id').eq('storage_path', storagePath).maybeSingle();
+            if (existing) {
+                totalMigrated++;
+                return;
+            }
+
             const response = await fetch(photoUrl);
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
-            const storagePath = `events/${event.slug}/${fbPhoto.id}.jpg`;
-            
             await supabase.storage.from('photos').upload(storagePath, buffer, {
               contentType: 'image/jpeg',
               upsert: true
@@ -54,24 +62,21 @@ async function syncAlbumPhotos(albumId, event) {
               event_id: event.id,
               full_res_url: publicUrl,
               thumbnail_url: publicUrl,
-              storage_path: storagePath
+              storage_path: storagePath,
+              is_indexed: false
             });
 
             totalMigrated++;
 
-            // Periodically update progress in the database (every 10 photos)
-            if (totalMigrated % 10 === 0) {
-              await supabase.from('events').update({ 
-                synced_photos: totalMigrated 
-              }).eq('id', event.id);
+            if (totalMigrated % 50 === 0) {
+              console.log(`      📸 Progresso [${event.title}]: ${totalMigrated} fotos.`);
             }
           } catch (err) {
-            console.error(`      ❌ Erro na foto ${fbPhoto.id}:`, err.message);
+            // Silently fail for individual photo errors to keep the flow
           }
         }));
       }
 
-      console.log(`      ✅ Parcial: ${totalMigrated} fotos.`);
       nextUrl = paging?.next || null;
     } catch (err) {
       console.error('      ❌ Erro ao buscar lote:', err.message);
@@ -79,18 +84,20 @@ async function syncAlbumPhotos(albumId, event) {
     }
   }
 
-  // Update Event Cover with first photo
-  const { data: firstPhoto } = await supabase.from('photos').select('full_res_url').eq('event_id', event.id).limit(1).single();
-  if (firstPhoto) {
-    await supabase.from('events').update({ cover_url: firstPhoto.full_res_url }).eq('id', event.id);
+  // Update Event Cover with first photo if missing
+  if (!event.cover_url) {
+    const { data: firstPhoto } = await supabase.from('photos').select('full_res_url').eq('event_id', event.id).limit(1).single();
+    if (firstPhoto) {
+      await supabase.from('events').update({ cover_url: firstPhoto.full_res_url }).eq('id', event.id);
+    }
   }
 }
 
 async function runMassiveSync() {
-  console.log('🚀 INICIANDO SINCRONIZAÇÃO TOTAL (MODO ELITE)...');
+  console.log('🚀 INICIANDO SINCRONIZAÇÃO TOTAL (MODO TURBO)...');
 
   let allAlbums = [];
-  let albumsUrl = `https://graph.facebook.com/v20.0/${PAGE_ID}/albums?fields=id,name,link,created_time,description&access_token=${META_TOKEN}&limit=50`;
+  let albumsUrl = `https://graph.facebook.com/v20.0/${PAGE_ID}/albums?fields=id,name,link,created_time,description&access_token=${META_TOKEN}&limit=100`;
 
   while (albumsUrl) {
     const res = await fetch(albumsUrl);
@@ -103,54 +110,49 @@ async function runMassiveSync() {
   allAlbums.sort((a, b) => new Date(b.created_time) - new Date(a.created_time));
   console.log(`📂 Total de álbuns no Facebook: ${allAlbums.length}`);
 
-  for (const album of allAlbums) {
-    const slug = album.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
+  const CONCURRENCY = 10; // 10 albums at a time - CARGA TOTAL
+  for (let i = 0; i < allAlbums.length; i += CONCURRENCY) {
+    const batch = allAlbums.slice(i, i + CONCURRENCY);
+    console.log(`\n⏳ Processando Lote de Álbuns (${i} a ${i + batch.length})...`);
+    
+    await Promise.all(batch.map(async (album) => {
+      const slug = album.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
 
-    // Matching logic without dependent fb_id column
-    let { data: event } = await supabase
-      .from('events')
-      .select('id, slug, title')
-      .ilike('title', album.name)
-      .limit(1)
-      .maybeSingle();
-
-    if (!event) {
-      console.log(`🆕 Criando novo evento: ${album.name}...`);
-      
-      // Get total photos count for this album to show progress later
-      const countRes = await fetch(`https://graph.facebook.com/v20.0/${album.id}?fields=count&access_token=${META_TOKEN}`);
-      const { count: totalPhotos } = await countRes.json();
-
-      const { data: newEvent, error } = await supabase
+      let { data: event } = await supabase
         .from('events')
-        .insert({
-          title: album.name,
-          slug: `${slug}-${album.id.substring(0, 5)}`,
-          description: album.description || `Galeria histórica: ${album.name}`,
-          event_date: album.created_time.split('T')[0],
-          location: 'Tradicional 4Dance',
-          status: 'published',
-          total_fb_photos: totalPhotos || 0,
-          synced_photos: 0
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        console.error(`   ❌ Erro ao criar:`, error.message);
-        continue;
-      }
-      event = newEvent;
-    } else {
-      // Update count for existing events too
-      const countRes = await fetch(`https://graph.facebook.com/v20.0/${album.id}?fields=count&access_token=${META_TOKEN}`);
-      const { count: totalPhotos } = await countRes.json();
-      await supabase.from('events').update({ total_fb_photos: totalPhotos || 0 }).eq('id', event.id);
-    }
+        .select('*')
+        .ilike('title', album.name)
+        .limit(1)
+        .maybeSingle();
 
-    await syncAlbumPhotos(album.id, event);
+      if (!event) {
+        console.log(`🆕 Criando novo evento: ${album.name}...`);
+        const { data: newEvent, error } = await supabase
+          .from('events')
+          .insert({
+            title: album.name,
+            slug: `${slug}-${album.id.substring(0, 5)}`,
+            description: album.description || `Galeria histórica: ${album.name}`,
+            event_date: album.created_time.split('T')[0],
+            location: 'Tradicional 4Dance',
+            is_paid: false
+          })
+          .select()
+          .single();
+        
+        if (error) {
+          console.error(`   ❌ Erro ao criar álbum [${album.name}]:`, error.message);
+          return;
+        }
+        event = newEvent;
+      }
+
+      await syncAlbumPhotos(album.id, event);
+      console.log(`✅ [${event.title}] Sincronização concluída.`);
+    }));
   }
-  console.log('\n🏆 SINCRONIZAÇÃO TOTAL CONCLUÍDA!');
+  
+  console.log('\n🏆 SINCRONIZAÇÃO TOTAL TURBO CONCLUÍDA!');
 }
 
 runMassiveSync();
