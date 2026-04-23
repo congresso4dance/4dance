@@ -36,7 +36,7 @@ interface Testimonial {
   avatar_url?: string;
 }
 
-const TESTIMONIALS_1 = [
+const TESTIMONIALS_1: Testimonial[] = [
   { id: '1', author: 'Adriano Tavares', role: 'Elite Social', content: 'A 4Dance captura não apenas o passo, mas a alma de cada movimento. É arte em forma de clique.' },
   { id: '2', author: 'Felipe Nascimento', role: 'Articulador de Momentos', content: 'Precisão técnica absoluta. Ver o trabalho final deles é reviver a emoção do baile em alta definição.' },
   { id: '3', author: 'Rodrigo Vitorio', role: 'Mestre do Rítmo', content: 'Incrível como conseguem antecipar o ápice da dança. É um olhar que entende de música e movimento.' },
@@ -49,7 +49,7 @@ const TESTIMONIALS_1 = [
   { id: '10', author: 'Amanda', role: 'Estrela da Pista', content: 'Parece que as fotos têm som. Dá pra sentir a vibração da música em cada registro.' },
 ];
 
-const TESTIMONIALS_2 = [
+const TESTIMONIALS_2: Testimonial[] = [
   { id: '11', author: 'Matheus Vaz', role: 'Tech & Future', content: 'O uso de IA e reconhecimento facial no portal 4Dance é o futuro da fotografia de eventos.' },
   { id: '12', author: 'Thiago Sebba', role: 'Visão Digital', content: 'Fluidez e segurança. O portal é intuitivo e as fotos são de uma qualidade técnica insuperável.' },
   { id: '13', author: 'Israel Szerman', role: 'Estrategista Visual', content: 'Mais que fotos, eles entregam autoridade visual para o festival. É um investimento necessário.' },
@@ -71,7 +71,7 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
   const allTestimonials1 = [...testimonials, ...TESTIMONIALS_1, ...TESTIMONIALS_1]; // Double for seamless loop
   const allTestimonials2 = [...TESTIMONIALS_2, ...TESTIMONIALS_2]; // Double for seamless loop
 
-  const marqueeVariantsLeft = {
+  const marqueeVariantsLeft: any = {
     animate: {
       x: [0, -2000],
       transition: {
@@ -85,7 +85,7 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
     },
   };
 
-  const marqueeVariantsRight = {
+  const marqueeVariantsRight: any = {
     animate: {
       x: [-2000, 0],
       transition: {
