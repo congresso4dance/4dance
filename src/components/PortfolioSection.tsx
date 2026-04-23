@@ -1,99 +1,93 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { Camera, ShieldCheck, Zap, Globe, UserCheck, Lock } from "lucide-react";
 import styles from "./PortfolioSection.module.css";
 
-interface Event {
-  id: string;
-  title: string;
-  slug: string;
-  event_date: string;
-  styles?: string[];
-  cover_url?: string;
-}
+const categories = [
+  {
+    id: 'dance',
+    title: 'Dança de Salão',
+    description: 'A essência do movimento em festivais e competições.',
+    image: '/images/category-dance.jpg'
+  },
+  {
+    id: 'events',
+    title: 'Eventos Corporativos',
+    description: 'Profissionalismo e elegância para o seu negócio.',
+    image: '/images/category-events.jpg'
+  },
+  {
+    id: 'portraits',
+    title: 'Ensaios Individuais',
+    description: 'Expressão e identidade capturadas com sensibilidade.',
+    image: '/images/category-portraits.jpg'
+  }
+];
 
-interface PortfolioSectionProps {
-  events: Event[];
-}
-
-export default function PortfolioSection({ events }: PortfolioSectionProps) {
+export default function PortfolioSection() {
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
       y: 0,
-      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
-    }
+      transition: {
+        duration: 0.6,
+      },
+    },
   };
 
   return (
     <section className={styles.section} id="portfolio">
       <div className={styles.container}>
-        <motion.div 
+        <motion.div
           className={styles.header}
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8 }}
         >
-          <span>Eventos Recentes</span>
-          <h2>Nossa Visão em Cada Clique</h2>
+          <span className={styles.label}>Nossa Expertise</span>
+          <h2 className={styles.title}>Portfólio de Elite</h2>
+          <p className={styles.description}>
+            Explore nossas principais vertentes de atuação e descubra como transformamos cada clique em uma obra prima.
+          </p>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           className={styles.grid}
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true }}
         >
-          {events.slice(0, 6).map((event) => (
-            <motion.div 
-              key={event.id} 
-              className={styles.portfolioItem}
+          {categories.map((category) => (
+            <motion.div
+              key={category.id}
+              className={styles.card}
               variants={itemVariants}
+              whileHover={{ y: -10 }}
             >
-              <Link href={`/eventos/${event.slug}`} className={styles.imageWrapper}>
-                <div className={styles.imageContainer}>
-                  {event.cover_url ? (
-                    <img 
-                      src={event.cover_url} 
-                      alt={event.title} 
-                      className={styles.image}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className={styles.imagePlaceholder}>
-                      <span>{new Date(event.event_date).getFullYear()}</span>
-                    </div>
-                  )}
-                </div>
+              <div className={styles.imageWrapper}>
+                {/* Placeholder for images */}
+                <div className={styles.placeholder} />
                 <div className={styles.overlay}>
-                  <span className={styles.category}>
-                    {event.styles?.join(' • ') || 'Evento de Dança'}
-                  </span>
-                  <h3 className={styles.itemTitle}>{event.title}</h3>
+                  <h3>{category.title}</h3>
+                  <p>{category.description}</p>
                 </div>
-              </Link>
+              </div>
             </motion.div>
           ))}
-          
-          {events.length === 0 && (
-            <div style={{ gridColumn: 'span 12', textAlign: 'center', padding: '4rem', opacity: 0.5 }}>
-              <p>Obras em desenvolvimento...</p>
-            </div>
-          )}
         </motion.div>
       </div>
     </section>
