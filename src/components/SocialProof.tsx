@@ -77,9 +77,9 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
       transition: {
         x: {
           repeat: Infinity,
-          repeatType: "loop", as const
+          repeatType: "loop",
           duration: 40,
-          ease: "linear", as const
+          ease: "linear",
         },
       },
     },
@@ -91,9 +91,9 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
       transition: {
         x: {
           repeat: Infinity,
-          repeatType: "loop", as const
+          repeatType: "loop",
           duration: 45,
-          ease: "linear", as const
+          ease: "linear",
         },
       },
     },
