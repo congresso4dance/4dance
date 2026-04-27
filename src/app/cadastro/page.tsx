@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, User, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import styles from '../login/login.module.css'; // Reusing and extending login styles
-import { useSearchParams } from 'next/navigation';
 import { sendWelcomeEmail } from '@/app/actions/email-actions';
 
-export default function SignupPage() {
+function SignupForm() {
   const searchParams = useSearchParams();
   const initialRole = searchParams.get('role') as any;
   
@@ -85,178 +84,188 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <main className={styles.main}>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={styles.card}
-          style={{ textAlign: 'center', padding: '3rem' }}
-        >
-          <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-            <CheckCircle2 size={64} color="#10b981" />
-          </div>
-          <h1 className={styles.title}>Conta Criada!</h1>
-          <p className={styles.subtitle}>
-            Enviamos um e-mail de confirmação. <br/>
-            Redirecionando para o login em instantes...
-          </p>
-        </motion.div>
-      </main>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={styles.successCard}
+      >
+        <div className={styles.successIcon}>
+          <CheckCircle2 size={64} color="#10b981" />
+        </div>
+        <h1 className={styles.title}>Cadastro Realizado!</h1>
+        <p className={styles.subtitle}>
+          Enviamos um e-mail de confirmação para <strong>{email}</strong>. 
+          Por favor, verifique sua caixa de entrada (e spam) para ativar sua conta.
+        </p>
+        <div className={styles.loadingBar}>
+          <motion.div 
+            className={styles.loadingProgress}
+            initial={{ width: 0 }}
+            animate={{ width: '100%' }}
+            transition={{ duration: 5 }}
+          />
+        </div>
+        <p className={styles.redirectText}>Redirecionando para o login em instantes...</p>
+      </motion.div>
     );
   }
 
   return (
-    <main className={styles.main}>
-      <div className={styles.glassBackground}></div>
-      
-      <div className={styles.headerSection}>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={styles.card}
+    >
+      <div className={styles.header}>
         <Link href="/" className={styles.backLink}>
           <ArrowLeft size={18} />
           <span>Voltar para o site</span>
         </Link>
+        <div className={styles.logoIcon}>
+          <UserPlus size={32} color="var(--primary)" />
+        </div>
+        <h1 className={styles.title}>Criar Conta 4Dance</h1>
+        <p className={styles.subtitle}>Junte-se à maior comunidade de fotografia de dança do Brasil.</p>
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={styles.card}
-      >
-        <div className={styles.header}>
-          <div className={styles.logoIcon}>
-            <UserPlus size={32} color="var(--primary)" />
-          </div>
-          <h1 className={styles.title}>Criar Conta 4Dance</h1>
-          <p className={styles.subtitle}>Faça parte da elite da dança e acesse suas memórias.</p>
+      <form onSubmit={handleSignup} className={styles.form}>
+        {/* Honeypot field (hidden from users) */}
+        <div style={{ display: 'none' }}>
+          <input 
+            type="text" 
+            value={honeypot} 
+            onChange={(e) => setHoneypot(e.target.value)} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
         </div>
 
-        <form onSubmit={handleSignup} className={styles.form}>
-          <div className={styles.inputGroup}>
-            <label htmlFor="fullName"><User size={16} /> Nome Completo</label>
-            <input 
-              id="fullName" 
-              type="text" 
-              placeholder="Como quer ser chamado?"
-              value={fullName} 
-              onChange={(e) => setFullName(e.target.value)} 
-              required 
-            />
-          </div>
+        <div className={styles.inputGroup}>
+          <label htmlFor="fullName"><User size={16} /> Nome Completo</label>
+          <input 
+            id="fullName" 
+            type="text" 
+            placeholder="Como quer ser chamado?"
+            value={fullName} 
+            onChange={(e) => setFullName(e.target.value)} 
+            required 
+          />
+        </div>
 
-          <div className={styles.inputGroup}>
-            <label htmlFor="email"><Mail size={16} /> Email</label>
-            <input 
-              id="email" 
-              type="email" 
-              placeholder="seu@email.com"
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              required 
-            />
-          </div>
-          
-          <div className={styles.inputGroup}>
-            <label htmlFor="password"><Lock size={16} /> Senha</label>
-            <input 
-              id="password" 
-              type="password" 
-              placeholder="No mínimo 6 caracteres"
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-            />
-          </div>
+        <div className={styles.inputGroup}>
+          <label htmlFor="email"><Mail size={16} /> Email Profissional</label>
+          <input 
+            id="email" 
+            type="email" 
+            placeholder="seu@email.com"
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            required 
+          />
+        </div>
+        
+        <div className={styles.inputGroup}>
+          <label htmlFor="password"><Lock size={16} /> Senha</label>
+          <input 
+            id="password" 
+            type="password" 
+            placeholder="Crie uma senha forte"
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required 
+            minLength={6}
+          />
+        </div>
 
-          {/* 🛡️ Honeypot Field (Invisível para humanos, irresistível para bots) */}
-          <div style={{ display: 'none' }} aria-hidden="true">
-            <input 
-              type="text" 
-              name="website_url" 
-              value={honeypot} 
-              onChange={(e) => setHoneypot(e.target.value)} 
-              tabIndex={-1} 
-              autoComplete="off" 
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '1.5rem' }}>
-            <button 
-              type="button"
-              onClick={() => setSelectedRole('CLIENT')}
-              style={{ 
-                padding: '0.8rem 0.4rem', 
-                borderRadius: '8px', 
-                border: '1px solid', 
-                borderColor: selectedRole === 'CLIENT' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                background: selectedRole === 'CLIENT' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
-                color: selectedRole === 'CLIENT' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Sou Dançarino
-            </button>
-            <button 
-              type="button"
-              onClick={() => setSelectedRole('PHOTOGRAPHER')}
-              style={{ 
-                padding: '0.8rem 0.4rem', 
-                borderRadius: '8px', 
-                border: '1px solid', 
-                borderColor: selectedRole === 'PHOTOGRAPHER' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                background: selectedRole === 'PHOTOGRAPHER' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
-                color: selectedRole === 'PHOTOGRAPHER' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Sou Fotógrafo
-            </button>
-            <button 
-              type="button"
-              onClick={() => setSelectedRole('PRODUCER')}
-              style={{ 
-                padding: '0.8rem 0.4rem', 
-                borderRadius: '8px', 
-                border: '1px solid', 
-                borderColor: selectedRole === 'PRODUCER' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                background: selectedRole === 'PRODUCER' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
-                color: selectedRole === 'PRODUCER' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Sou Produtor
-            </button>
-          </div>
-
-          {error && (
-            <motion.p 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              className={styles.error}
-            >
-              {error}
-            </motion.p>
-          )}
-
-          <button type="submit" disabled={loading} className={styles.button}>
-            {loading ? (
-              'Criando...'
-            ) : (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                Começar Agora <ArrowRight size={18} />
-              </span>
-            )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '1.5rem' }}>
+          <button 
+            type="button"
+            onClick={() => setSelectedRole('CLIENT')}
+            style={{ 
+              padding: '0.8rem 0.4rem', 
+              borderRadius: '8px', 
+              border: '1px solid', 
+              borderColor: selectedRole === 'CLIENT' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+              background: selectedRole === 'CLIENT' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+              color: selectedRole === 'CLIENT' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Sou Dançarino
           </button>
-        </form>
-
-        <div className={styles.footer}>
-          Já tem uma conta? <Link href="/login">Fazer Login</Link>
+          <button 
+            type="button"
+            onClick={() => setSelectedRole('PHOTOGRAPHER')}
+            style={{ 
+              padding: '0.8rem 0.4rem', 
+              borderRadius: '8px', 
+              border: '1px solid', 
+              borderColor: selectedRole === 'PHOTOGRAPHER' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+              background: selectedRole === 'PHOTOGRAPHER' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+              color: selectedRole === 'PHOTOGRAPHER' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Sou Fotógrafo
+          </button>
+          <button 
+            type="button"
+            onClick={() => setSelectedRole('PRODUCER')}
+            style={{ 
+              padding: '0.8rem 0.4rem', 
+              borderRadius: '8px', 
+              border: '1px solid', 
+              borderColor: selectedRole === 'PRODUCER' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+              background: selectedRole === 'PRODUCER' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+              color: selectedRole === 'PRODUCER' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Sou Produtor
+          </button>
         </div>
-      </motion.div>
+
+        {error && (
+          <motion.p 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className={styles.error}
+          >
+            {error}
+          </motion.p>
+        )}
+
+        <button type="submit" disabled={loading} className={styles.button}>
+          {loading ? (
+            'Processando...'
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+              Finalizar Cadastro <ArrowRight size={18} />
+            </span>
+          )}
+        </button>
+      </form>
+
+      <div className={styles.footer}>
+        Já tem uma conta? <Link href="/login">Fazer Login</Link>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <main className={styles.main}>
+      <div className={styles.glassBackground}></div>
+      <Suspense fallback={<div className={styles.loading}>Carregando...</div>}>
+        <SignupForm />
+      </Suspense>
     </main>
   );
 }
