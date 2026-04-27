@@ -86,20 +86,24 @@ export default function Hero({ events }: HeroProps) {
             className={styles.innerContent}
           >
             <h1 className={styles.title}>
-              REGISTRAMOS A <span className={styles.highlight}>ENERGIA</span> DA DANÇA
+              A PLATAFORMA <span className={styles.highlight}>OFICIAL</span> DE FOTOS DOS EVENTOS DE DANÇA
             </h1>
             <p className={styles.subtitle}>
-              Transformamos cada evento em uma experiência visual onde você encontra suas fotos de forma simples e profissional.
+              O ecossistema onde você encontra suas fotos com reconhecimento facial e os profissionais escalam seu faturamento.
             </p>
             
             <div className={styles.actions}>
               <ShinyButton href="/eventos">
-                Encontre suas fotos
+                Encontrar minhas fotos
               </ShinyButton>
               
-              <TracingButton href="/contrate">
-                Contrate a 4Dance
-              </TracingButton>
+              <Link href="/cadastro?role=PHOTOGRAPHER" className={styles.secondaryAction}>
+                Sou Fotógrafo
+              </Link>
+
+              <Link href="/cadastro?role=PRODUCER" className={styles.secondaryAction}>
+                Sou Produtor
+              </Link>
             </div>
           </motion.div>
         </div>

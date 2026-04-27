@@ -1,36 +1,44 @@
 import { MetadataRoute } from 'next'
-import { createClient } from '@/utils/supabase/server'
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient()
+export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://4dance.com.br'
-
-  // 1. Fetch public events
-  const { data: events } = await supabase
-    .from('events')
-    .select('slug, updated_at')
-    .eq('is_public', true)
-
-  const eventEntries: MetadataRoute.Sitemap = (events || []).map((event) => ({
-    url: `${baseUrl}/eventos/${event.slug}`,
-    lastModified: event.updated_at || new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.7,
-  }))
 
   return [
     {
       url: baseUrl,
       lastModified: new Date(),
       changeFrequency: 'daily',
-      priority: 1.0,
+      priority: 1,
     },
     {
       url: `${baseUrl}/eventos`,
       lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
+      changeFrequency: 'always',
+      priority: 0.9,
     },
-    ...eventEntries,
+    {
+      url: `${baseUrl}/cadastro`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/login`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/privacidade`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/termos`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
   ]
 }

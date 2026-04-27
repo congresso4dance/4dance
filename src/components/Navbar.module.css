@@ -17,11 +17,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2.5rem var(--container-padding);
+  padding: 2rem var(--container-padding);
   width: 100%;
   max-width: var(--container-max);
   transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: auto !important;
+  gap: 2rem;
 }
 
 .logo {
@@ -31,11 +32,12 @@
 
 .links {
   display: flex;
-  gap: 3rem;
+  gap: var(--nav-gap, 3rem);
   list-style: none;
   align-items: center;
   margin: 0;
   padding: 0;
+  transition: gap 0.4s;
 }
 
 .links a {
@@ -65,7 +67,7 @@
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  margin-left: 2rem;
+  margin-left: auto;
 }
 
 .loginBtn {

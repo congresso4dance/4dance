@@ -6,24 +6,19 @@ import styles from "./TimelineSection.module.css";
 
 const steps = [
   {
-    year: "2017",
-    title: "O Primeiro Flash",
-    description: "Nascimento da 4Dance com o propósito de levar fotografia profissional para as pistas de dança, onde cada movimento importa."
+    number: "01",
+    title: "Vá até o evento",
+    description: "Curta seu evento de dança favorito. Nossos fotógrafos estarão registrando cada movimento especial."
   },
   {
-    year: "2020",
-    title: "Expansão Nacional",
-    description: "Cobertura dos maiores festivais do Brasil, consolidando um estilo vibrante e técnico que se tornou referência no mercado."
+    number: "02",
+    title: "Encontre suas fotos",
+    description: "Suba uma selfie no nosso sistema. Nossa IA de reconhecimento facial encontrará todas as suas fotos em segundos."
   },
   {
-    year: "2022",
-    title: "Padrão de Excelência",
-    description: "Implementação de processos de seleção de elite e entrega ultra-rápida, elevando a experiêcia do cliente final."
-  },
-  {
-    year: "2024",
-    title: "Tecnologia & Futuro",
-    description: "Lançamento do Portal 4Dance, unindo arte e tecnologia para facilitar o acesso às memórias mais preciosas."
+    number: "03",
+    title: "Compre e receba na hora",
+    description: "Escolha suas preferidas, pague via PIX ou cartão e receba o download em alta resolução imediatamente."
   }
 ];
 
@@ -50,9 +45,9 @@ export default function TimelineSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <span className={styles.label}>Nossa História</span>
-          <h2>A Jornada do Olhar</h2>
-          <p>Transformando momentos efêmeros em legados visuais desde o primeiro click.</p>
+          <span className={styles.label}>Passo a Passo</span>
+          <h2>Como funciona a 4Dance?</h2>
+          <p>Siga estes 3 passos simples para ter suas memórias eternizadas.</p>
         </motion.div>
 
         <div className={styles.timelineWrapper}>
@@ -75,7 +70,7 @@ export default function TimelineSection() {
                 transition={{ duration: 0.8, delay: index * 0.15 }}
               >
                 <div className={styles.dot} />
-                <span className={styles.year}>{step.year}</span>
+                <span className={styles.year}>{step.number}</span>
                 <div className={styles.content}>
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>

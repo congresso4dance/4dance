@@ -131,9 +131,13 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  let displayPhotos = filteredPhotos ? filteredPhotos : allPhotos;
+  const [displayLimit, setDisplayLimit] = useState(48);
+  
+  let displayPhotos = (filteredPhotos ? filteredPhotos : allPhotos).slice(0, displayLimit);
   if (showOnlyFavorites) {
-    displayPhotos = displayPhotos.filter((p: any) => favorites.includes(p.id));
+    displayPhotos = (filteredPhotos ? filteredPhotos : allPhotos)
+      .filter((p: any) => favorites.includes(p.id))
+      .slice(0, displayLimit);
   }
 
   const isSyncing = event.synced_photos < event.total_fb_photos;
@@ -168,6 +172,21 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex, allPhotos]);
+  
+  // INFINITE SCROLL
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && displayLimit < (filteredPhotos ? filteredPhotos.length : allPhotos.length)) {
+          setDisplayLimit(prev => prev + 24);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [loadMoreRef, displayLimit, filteredPhotos, allPhotos]);
 
   const toggleFavorite = (id: string) => {
     const newFavs = favorites.includes(id) 
@@ -318,7 +337,18 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
   return (
     <>
       <div className={styles.searchBarRow}>
-        <GallerySearch photos={allPhotos} eventId={event.id} onFilter={setFilteredPhotos} />
+        <div style={{ width: '100%' }}>
+          <GallerySearch photos={allPhotos} eventId={event.id} onFilter={setFilteredPhotos} />
+          <p style={{ 
+            fontSize: '0.8rem', 
+            color: 'rgba(255,255,255,0.4)', 
+            marginTop: '10px', 
+            padding: '0 10px',
+            lineHeight: '1.4' 
+          }}>
+            ✨ Nota: Pode ser que a IA não encontre todas as suas fotos se você estiver de lado ou de costas enquanto dança. Continue explorando a galeria completa!
+          </p>
+        </div>
         <div className={styles.filterGroup}>
           <button 
             className={`${styles.filterBtn} ${showOnlyFavorites ? styles.active : ''}`}
@@ -386,6 +416,8 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
         ))}
       </motion.div>
 
+      <div ref={loadMoreRef} style={{ height: '100px', width: '100%' }} />
+
       {/* --- LIGHTBOX APPLE QUALITY --- */}
       <AnimatePresence>
         {selectedIndex !== null && (
@@ -398,19 +430,19 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
           >
             <div className={styles.lightboxActions}>
               <button 
-                className={`${styles.actionBtn} ${favorites.includes(displayPhotos[selectedIndex].id) ? styles.favorited : ''}`}
+                className={`${styles.actionBtn} ${displayPhotos[selectedIndex] && favorites.includes(displayPhotos[selectedIndex].id) ? styles.favorited : ''}`}
                 onClick={(e) => { 
                   e.stopPropagation(); 
                   toggleFavorite(displayPhotos[selectedIndex].id); 
                 }}
               >
-                <Heart size={22} fill={favorites.includes(displayPhotos[selectedIndex].id) ? "currentColor" : "none"} />
+                <Heart size={22} fill={displayPhotos[selectedIndex] && favorites.includes(displayPhotos[selectedIndex]?.id) ? "currentColor" : "none"} />
               </button>
               <button 
                 className={styles.actionBtn} 
                 onClick={(e) => { 
                   e.stopPropagation(); 
-                  handleShare(displayPhotos[selectedIndex]); 
+                  if (displayPhotos[selectedIndex]) handleShare(displayPhotos[selectedIndex]); 
                 }}
               >
                 <Share2 size={22} />
@@ -419,7 +451,7 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
                 className={styles.actionBtn} 
                 onClick={(e) => { 
                   e.stopPropagation(); 
-                  handleDownload(displayPhotos[selectedIndex]); 
+                  if (displayPhotos[selectedIndex]) handleDownload(displayPhotos[selectedIndex]); 
                 }}
               >
                 <Download size={22} />
@@ -440,32 +472,35 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
               className={styles.lightboxContent} 
               onClick={(e) => e.stopPropagation()}
             >
-              <motion.div 
-                className={styles.lightboxImageContainer}
-                animate={{ 
-                  scale: isZooming ? 1.4 : 1,
-                  originX: focalPoint.x / 100,
-                  originY: focalPoint.y / 100
-                }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 40, 
-                  damping: 15,
-                  delay: 0.2
-                }}
-              >
-                <Image 
-                  ref={imgRef}
-                  src={displayPhotos[selectedIndex].thumbnail_url} 
-                  alt="Ampliada" 
-                  className={styles.lightboxImage}
-                  fill
-                  unoptimized={true}
-                  style={{ objectFit: 'contain' }}
-                  priority
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                />
+              {displayPhotos[selectedIndex] && (
+                <motion.div 
+                  className={styles.lightboxImageContainer}
+                  animate={{ 
+                    scale: isZooming ? 1.4 : 1,
+                    originX: focalPoint.x / 100,
+                    originY: focalPoint.y / 100
+                  }}
+                  transition={{ 
+                    type: "spring", 
+                    stiffness: 40, 
+                    damping: 15,
+                    delay: 0.2
+                  }}
+                >
+                  <Image 
+                    ref={imgRef}
+                    src={displayPhotos[selectedIndex].thumbnail_url} 
+                    alt="Ampliada" 
+                    className={styles.lightboxImage}
+                    fill
+                    unoptimized={true}
+                    style={{ objectFit: 'contain' }}
+                    priority
+                    onContextMenu={(e) => e.preventDefault()}
+                    onDragStart={(e) => e.preventDefault()}
+                  />
+                </motion.div>
+              )}
 
                 {/* --- PRELOAD INVISÍVEL (CARREGA A PRÓXIMA FOTO NO FUNDO) --- */}
                 {selectedIndex < displayPhotos.length - 1 && (

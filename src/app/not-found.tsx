@@ -1,58 +1,70 @@
+"use client";
+
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { motion } from 'framer-motion';
+import { Camera, Home, ArrowLeft, Search } from 'lucide-react';
+import styles from './not-found.module.css';
 
 export default function NotFound() {
   return (
-    <main style={{ 
-      background: '#050505', 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column',
-      color: 'white'
-    }}>
-      <Navbar />
-      
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        padding: '0 2rem',
-        textAlign: 'center'
-      }}>
-        <h1 style={{ 
-          fontSize: 'clamp(8rem, 20vw, 15rem)', 
-          margin: 0, 
-          lineHeight: 1,
-          background: 'linear-gradient(to bottom, #fff, #333)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          fontWeight: 900
-        }}>
-          404
-        </h1>
-        <h2 style={{ fontSize: '1.5rem', marginTop: '-2rem', marginBottom: '2rem' }}>
-          O passo foi errado. Esta página não existe.
-        </h2>
-        <p style={{ color: '#888', maxWidth: '500px', marginBottom: '3rem' }}>
-          Talvez o evento tenha sido removido ou o link esteja incorreto. 
-          Use o menu acima ou volte para a página inicial.
-        </p>
-        <Link href="/" style={{ 
-          background: 'var(--primary)', 
-          color: 'white', 
-          padding: '1rem 2rem', 
-          borderRadius: '4px',
-          fontWeight: 700,
-          textTransform: 'uppercase'
-        }}>
-          Voltar para a Home
-        </Link>
+    <div className={styles.container}>
+      <div className={styles.background}>
+        <div className={styles.blob}></div>
+        <div className={styles.blob}></div>
+        <div className={styles.blob}></div>
       </div>
 
-      <Footer />
-    </main>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className={styles.content}
+      >
+        <div className={styles.iconWrapper}>
+          <motion.div
+            animate={{ 
+              rotate: [0, -10, 10, -10, 0],
+              scale: [1, 1.1, 1, 1.1, 1]
+            }}
+            transition={{ repeat: Infinity, duration: 5 }}
+          >
+            <Camera size={80} className={styles.icon} />
+          </motion.div>
+          <div className={styles.flash}></div>
+        </div>
+
+        <h1 className={styles.title}>404</h1>
+        <h2 className={styles.subtitle}>Flash fora de foco!</h2>
+        <p className={styles.description}>
+          Parece que essa coreografia não existe ou a página mudou de palco. 
+          Não deixe o ritmo parar, volte para o início.
+        </p>
+
+        <div className={styles.actions}>
+          <Link href="/" className={styles.primaryButton}>
+            <Home size={20} />
+            Voltar para o Início
+          </Link>
+          <button 
+            onClick={() => window.history.back()} 
+            className={styles.secondaryButton}
+          >
+            <ArrowLeft size={20} />
+            Voltar Anterior
+          </button>
+        </div>
+
+        <div className={styles.searchSuggestion}>
+          <p>Procurando suas fotos?</p>
+          <Link href="/eventos">
+            Ver Eventos Ativos <Search size={16} />
+          </Link>
+        </div>
+      </motion.div>
+
+      <footer className={styles.footer}>
+        &copy; {new Date().getFullYear()} 4Dance. Todos os direitos reservados.
+      </footer>
+    </div>
   );
 }

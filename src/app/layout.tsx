@@ -38,6 +38,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
+  themeColor: "#0a0a0a",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
   },
 };
 
@@ -50,11 +58,13 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`${outfit.variable} ${montserrat.variable}`}>
         <Preloader />
-        <CustomCursor />
         <SmoothScroll>
           {children}
         </SmoothScroll>
         <WhatsAppButton />
+        {/* GOOGLE ANALYTICS PLACEHOLDER */}
+        {/* <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script> */}
+        {/* <script dangerouslySetInnerHTML={{ __html: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-XXXXXXXXXX');` }} /> */}
       </body>
     </html>
   );

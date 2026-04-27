@@ -48,7 +48,7 @@ export default function Navbar() {
         initial={false}
         animate={{
           width: isScrolled ? '90%' : '100%',
-          maxWidth: isScrolled ? '600px' : 'var(--container-max)',
+          maxWidth: isScrolled ? '800px' : 'var(--container-max)',
           marginTop: isScrolled ? '1.5rem' : '0',
           borderRadius: isScrolled ? '100px' : '0',
           background: isScrolled ? 'rgba(15, 15, 15, 0.7)' : 'rgba(5, 5, 5, 0)',
@@ -64,14 +64,21 @@ export default function Navbar() {
             <Image 
               src="/logo/Logo l 4dance_BRANCA.png" 
               alt="4Dance Logo" 
-              width={120} 
+              width={140} 
               height={40} 
               priority
+              style={{ width: 'auto', height: '32px', objectFit: 'contain' }}
             />
           </motion.div>
         </Link>
 
-        <ul className={styles.links}>
+        <ul 
+          className={styles.links}
+          style={{ 
+            '--nav-gap': isScrolled ? '1.5rem' : '3rem',
+            paddingLeft: isScrolled ? '1rem' : '0'
+          } as any}
+        >
           {menuLinks.map((link) => (
             <li key={link.href}>
               <Link 
