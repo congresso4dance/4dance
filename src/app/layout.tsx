@@ -18,6 +18,14 @@ const montserrat = Montserrat({
   weight: ["400", "700", "900"],
 });
 
+export const viewport = {
+  themeColor: "#0a0a0a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://4dance.com.br"),
   title: "4Dance | Fotografia de Eventos de Dança de Salão",
@@ -39,13 +47,6 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
-  },
-  themeColor: "#0a0a0a",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
 };
 
