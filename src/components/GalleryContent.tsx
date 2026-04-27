@@ -527,7 +527,6 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
               <div className={styles.photoCounter}>
                 <span>{selectedIndex + 1}</span> / {displayPhotos.length}
               </div>
-            </motion.div>
 
             {selectedIndex < displayPhotos.length - 1 && (
               <button className={`${styles.navBtn} ${styles.nextBtn}`} onClick={(e) => { e.stopPropagation(); handleNext(); }}>
