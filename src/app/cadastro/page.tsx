@@ -7,13 +7,18 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, User, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import styles from '../login/login.module.css'; // Reusing and extending login styles
+import { useSearchParams } from 'next/navigation';
 import { sendWelcomeEmail } from '@/app/actions/email-actions';
 
 export default function SignupPage() {
+  const searchParams = useSearchParams();
+  const initialRole = searchParams.get('role') as any;
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [isPhotographer, setIsPhotographer] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'CLIENT' | 'PHOTOGRAPHER' | 'PRODUCER'>(initialRole || 'CLIENT');
+  const [honeypot, setHoneypot] = useState(''); // Anti-bot Honeypot
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -22,6 +27,13 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 🛡️ Honeypot Check
+    if (honeypot) {
+      setSuccess(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -50,7 +62,7 @@ export default function SignupPage() {
           { 
             id: authData.user.id, 
             full_name: fullName,
-            role: isPhotographer ? 'PHOTOGRAPHER' : 'CLIENT'
+            role: selectedRole
           }
         ]);
 
@@ -58,7 +70,7 @@ export default function SignupPage() {
         console.error("Erro ao criar perfil:", profileError);
       }
 
-      // 3. Send Welcome Email (Instant via Resend)
+      // 3. Send Welcome Email
       try {
         await sendWelcomeEmail(email, fullName);
       } catch (emailErr) {
@@ -154,19 +166,30 @@ export default function SignupPage() {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
+          {/* 🛡️ Honeypot Field (Invisível para humanos, irresistível para bots) */}
+          <div style={{ display: 'none' }} aria-hidden="true">
+            <input 
+              type="text" 
+              name="website_url" 
+              value={honeypot} 
+              onChange={(e) => setHoneypot(e.target.value)} 
+              tabIndex={-1} 
+              autoComplete="off" 
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '1.5rem' }}>
             <button 
               type="button"
-              onClick={() => setIsPhotographer(false)}
+              onClick={() => setSelectedRole('CLIENT')}
               style={{ 
-                flex: 1, 
-                padding: '0.8rem', 
+                padding: '0.8rem 0.4rem', 
                 borderRadius: '8px', 
                 border: '1px solid', 
-                borderColor: !isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                background: !isPhotographer ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
-                color: !isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
-                fontSize: '0.85rem',
+                borderColor: selectedRole === 'CLIENT' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                background: selectedRole === 'CLIENT' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+                color: selectedRole === 'CLIENT' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                fontSize: '0.75rem',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
@@ -175,21 +198,37 @@ export default function SignupPage() {
             </button>
             <button 
               type="button"
-              onClick={() => setIsPhotographer(true)}
+              onClick={() => setSelectedRole('PHOTOGRAPHER')}
               style={{ 
-                flex: 1, 
-                padding: '0.8rem', 
+                padding: '0.8rem 0.4rem', 
                 borderRadius: '8px', 
                 border: '1px solid', 
-                borderColor: isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                background: isPhotographer ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
-                color: isPhotographer ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
-                fontSize: '0.85rem',
+                borderColor: selectedRole === 'PHOTOGRAPHER' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                background: selectedRole === 'PHOTOGRAPHER' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+                color: selectedRole === 'PHOTOGRAPHER' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                fontSize: '0.75rem',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
               Sou Fotógrafo
+            </button>
+            <button 
+              type="button"
+              onClick={() => setSelectedRole('PRODUCER')}
+              style={{ 
+                padding: '0.8rem 0.4rem', 
+                borderRadius: '8px', 
+                border: '1px solid', 
+                borderColor: selectedRole === 'PRODUCER' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                background: selectedRole === 'PRODUCER' ? 'rgba(230, 0, 76, 0.1)' : 'transparent',
+                color: selectedRole === 'PRODUCER' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Sou Produtor
             </button>
           </div>
 

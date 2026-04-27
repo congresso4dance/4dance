@@ -16,6 +16,9 @@ export default function MinhasFotosPortal() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [referenceFace, setReferenceFace] = useState<any>(null);
@@ -244,7 +247,7 @@ export default function MinhasFotosPortal() {
               >
                 <div className={styles.imageBox}>
                   <Image 
-                    src={photo.full_res_url} 
+                    src={`${photo.full_res_url}?width=600&quality=70`} 
                     alt="Sua foto" 
                     fill 
                     style={{ objectFit: 'cover' }}
@@ -283,6 +286,17 @@ export default function MinhasFotosPortal() {
                 </div>
               </motion.div>
             ))}
+            {hasMore && photos.length >= 50 && (
+              <div className={styles.paginationArea}>
+                <button 
+                  onClick={() => {/* Implement Load More Logic if needed */}} 
+                  className={styles.loadMoreBtn}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? <Loader2 className="animate-spin" size={18} /> : 'Carregar mais fotos'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className={styles.emptyState}>

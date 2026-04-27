@@ -1,12 +1,78 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+/**
+ * 🔒 SEGURANÇA ELITE: Content Security Policy (CSP)
+ * Previne XSS, Clickjacking e outras injeções maliciosas.
+ */
+function generateCSP() {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ""};
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://*.supabase.co https://*.stripe.com;
+    font-src 'self' data:;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+    frame-ancestors 'none';
+    connect-src 'self' https://*.supabase.co https://*.stripe.com https://api.google.com;
+    upgrade-insecure-requests;
+  `.replace(/\s{2,}/g, ' ').trim()
+
+  return { cspHeader, nonce }
+}
+
+// 🔒 SEGURANÇA ELITE: Rate Limiting Simples (In-Memory Fallback)
+// Em produção, deve-se usar Redis/Upstash para escalabilidade serverless.
+const rateLimitMap = new Map<string, { count: number; lastReset: number }>()
+
+function isRateLimited(ip: string) {
+  const now = Date.now()
+  const windowMs = 60 * 1000 // 1 minuto
+  const maxRequests = 100 // Limite por IP
+
+  const record = rateLimitMap.get(ip) || { count: 0, lastReset: now }
+
+  if (now - record.lastReset > windowMs) {
+    record.count = 1
+    record.lastReset = now
+  } else {
+    record.count++
+  }
+
+  rateLimitMap.set(ip, record)
+  return record.count > maxRequests
+}
+
+export default async function proxy(request: NextRequest) {
+  const ip = request.ip || 'anonymous'
+  
+  // 1. 🔒 Rate Limiting
+  if (isRateLimited(ip)) {
+    return new NextResponse('Muitas requisições. Tente novamente em 1 minuto.', { status: 429 })
+  }
+
+  // 2. 🔒 Gerar CSP
+  const { cspHeader, nonce } = generateCSP()
+  
+  // Inicializar resposta com Headers de Segurança (Lei 15)
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', cspHeader)
+
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   })
+
+  // Headers de Segurança Padrão
+  response.headers.set('Content-Security-Policy', cspHeader)
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,7 +86,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
           response = NextResponse.next({
             request: {
-              headers: request.headers,
+              headers: requestHeaders,
             },
           })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -81,6 +147,58 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // 🔒 Proteger rotas /portal-fotografo
+  if (request.nextUrl.pathname.startsWith('/portal-fotografo')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    const adminSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { cookies: { getAll() { return [] }, setAll() {} } }
+    )
+
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const role = profile?.role || 'user'
+
+    const allowedRoles = ['PHOTOGRAPHER', 'owner', 'admin', 'editor']
+    if (!allowedRoles.includes(role)) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
+
+  // 🔒 Proteger rotas /portal-produtor
+  if (request.nextUrl.pathname.startsWith('/portal-produtor')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    const adminSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { cookies: { getAll() { return [] }, setAll() {} } }
+    )
+
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const role = profile?.role || 'user'
+
+    const allowedRoles = ['PRODUCER', 'owner', 'admin']
+    if (!allowedRoles.includes(role)) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
+
   return response
 }
 
@@ -89,3 +207,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
+

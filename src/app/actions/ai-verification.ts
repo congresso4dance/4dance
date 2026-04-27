@@ -1,17 +1,42 @@
-'use strict';
+'use server';
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from '@/utils/supabase/server';
 
 /**
  * Server Action para verificação de Elite usando Gemini 2.0 Flash.
- * Falha rápido para ativar o fallback vetorial se o Gemini estiver indisponível.
+ * 🔒 SEGURANÇA: Validado contra SSRF e Vazamento de Chaves.
  */
 export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: string[]) {
   try {
-    const apiKey = process.env.GOOGLE_AI_STUDIO_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_STUDIO_KEY;
+    // 🔒 SEGURANÇA: Garante que o usuário está logado
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("Não autorizado");
+    }
+
+    // 🔒 SEGURANÇA: Chave NUNCA deve ser NEXT_PUBLIC_
+    const apiKey = process.env.GOOGLE_AI_STUDIO_KEY;
     
     if (!apiKey) {
-      return { success: false, error: "Chave de IA não configurada." };
+      return { success: false, error: "Chave de IA não configurada no servidor." };
+    }
+
+    // 🔒 SEGURANÇA: Proteção contra SSRF (Lei 12)
+    // Apenas permite URLs vindas do próprio Supabase Storage
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const validatedUrls = candidateUrls.filter(url => {
+        try {
+            const u = new URL(url);
+            return u.origin === new URL(supabaseUrl!).origin;
+        } catch {
+            return false;
+        }
+    });
+
+    if (validatedUrls.length === 0 && candidateUrls.length > 0) {
+        throw new Error("Tentativa de SSRF bloqueada: Domínio não permitido.");
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -26,8 +51,8 @@ export async function verifyFacesWithAI(referenceBase64: string, candidateUrls: 
     };
 
     // Limitar a 10 candidatas para economizar tokens
-    const topCandidates = candidateUrls.slice(0, 10);
-    console.log(`[AI] Verificando ${topCandidates.length} candidatas...`);
+    const topCandidates = validatedUrls.slice(0, 10);
+    console.log(`[AI] Verificando ${topCandidates.length} candidatas validadas...`);
 
     const candidateParts = await Promise.all(topCandidates.map(async (url) => {
       const response = await fetch(url);
@@ -53,21 +78,18 @@ Regras:
 Retorne APENAS JSON: {"indices": [0, 2, 5]}
 Se nenhum match: {"indices": []}`;
 
-    // UMA tentativa apenas - falha rápido para ativar o fallback
     const result = await model.generateContent([prompt, referencePart, ...candidateParts]);
     const responseText = result.response.text();
     
-    console.log(`[AI] Resposta:`, responseText);
-
     const cleanJson = responseText.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
     const matchedUrls = parsed.indices.map((idx: number) => topCandidates[idx]);
 
-    console.log(`[AI] ${matchedUrls.length} matches confirmados.`);
     return { success: true, matches: matchedUrls };
 
-  } catch (error) {
-    console.warn("[AI] Gemini indisponível, ativando fallback vetorial:", error);
-    return { success: false, error: "Gemini indisponível" };
+  } catch (error: any) {
+    console.warn("[AI] Erro na verificação:", error.message);
+    return { success: false, error: error.message };
   }
 }
+

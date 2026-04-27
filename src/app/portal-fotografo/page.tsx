@@ -20,14 +20,22 @@ export default function PhotographerDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Mocking stats for now until orders logic is updated
-      // In production, this would query the 'orders' and 'photos' tables
-      setStats({
-        balance: 1250.80,
-        pending: 450.00,
-        salesCount: 84,
-        conversion: 12.5
-      });
+      const { data: splits } = await supabase
+        .from('revenue_splits')
+        .select('photographer_amount, total_amount')
+        .eq('photographer_id', user.id);
+
+      if (splits) {
+        const totalEarned = splits.reduce((acc, s) => acc + s.photographer_amount, 0);
+        const totalSales = splits.length;
+        
+        setStats({
+          balance: totalEarned,
+          pending: 0, // Pending logic would depend on Stripe balance
+          salesCount: totalSales,
+          conversion: totalSales > 0 ? 15.2 : 0 // Placeholder for conversion
+        });
+      }
       setLoading(false);
     }
     loadStats();

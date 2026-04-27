@@ -84,14 +84,12 @@ export async function POST(req: Request) {
         quantity: 1,
       })),
       mode: 'payment',
-      payment_intent_data: transferData ? {
-        transfer_data: transferData,
-      } : undefined,
       success_url: `${req.headers.get('origin')}/minhas-fotos?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin')}/eventos?canceled=true`,
       metadata: {
         orderId: order.id,
         userId: user.id,
+        eventId: eventId,
       },
     });
 

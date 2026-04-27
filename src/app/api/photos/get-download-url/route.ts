@@ -22,12 +22,12 @@ export async function GET(req: Request) {
     // 1. Fetch photo and its event pricing policy
     const { data: photo, error: photoError } = await supabaseAdmin
       .from('photos')
-      .select('*, events(id, is_paid)')
+      .select('id, storage_path, events(id, is_paid)') // 🔒 Lei 9: Projeção explícita
       .eq('id', photoId)
       .single();
 
     if (photoError || !photo) {
-      return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 });
+      return NextResponse.json({ error: 'Foto não encontrada ou sem permissão' }, { status: 404 });
     }
 
     const event = photo.events as any;

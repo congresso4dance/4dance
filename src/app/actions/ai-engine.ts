@@ -1,18 +1,44 @@
 "use server";
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 
-// Usamos o Service Role para garantir que o Robô tenha acesso total, ignorando RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+/**
+ * 🔒 SEGURANÇA: Verifica se o usuário tem permissão administrativa
+ * antes de retornar um cliente com privilégios de Service Role.
+ */
+async function getAdminClient() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Não autorizado: Sessão não encontrada.");
+  }
+
+  // Busca o perfil para verificar a Role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const allowedRoles = ['owner', 'admin'];
+  if (!allowedRoles.includes(profile?.role || '')) {
+    throw new Error("Não autorizado: Privilégios insuficientes.");
+  }
+
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 /**
  * Busca um lote de fotos pendentes de indexação
  */
 export async function getPendingPhotos(limit = 20) {
   try {
+    const supabaseAdmin = await getAdminClient();
     const { data, error } = await supabaseAdmin
       .from('photos')
       .select('id, full_res_url, event_id')
@@ -34,6 +60,8 @@ export async function getPendingPhotos(limit = 20) {
  * Salva as faces encontradas e marca a foto como indexada
  */
 export async function markPhotoAsIndexed(photoId: string, faces: any[]) {
+  const supabaseAdmin = await getAdminClient();
+
   if (faces.length > 0) {
     const { error: insertError } = await supabaseAdmin
       .from('photo_faces')
@@ -59,6 +87,7 @@ export async function markPhotoAsIndexed(photoId: string, faces: any[]) {
  * Reset Global (Apenas para emergências/re-indexação)
  */
 export async function resetAllIndexing() {
+  const supabaseAdmin = await getAdminClient();
   const { error } = await supabaseAdmin
     .from('photos')
     .update({ is_indexed: false });
@@ -66,3 +95,4 @@ export async function resetAllIndexing() {
   if (error) throw error;
   return { success: true };
 }
+

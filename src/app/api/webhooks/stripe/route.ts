@@ -1,10 +1,10 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import PurchaseEmail from '@/components/emails/PurchaseEmail';
-import { trackActivity } from '@/app/actions/crm-actions';
+import { trackActivityInternal } from '@/app/actions/crm-actions';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-01-27-acacia' as any,
@@ -26,7 +26,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Assinatura inválida' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   // Handle Event
   if (event.type === 'checkout.session.completed') {
@@ -39,29 +42,105 @@ export async function POST(req: Request) {
     if (orderId) {
       console.log(`✅ Pagamento confirmado para o pedido: ${orderId}`);
       
-      // Update Order Status
-      const { error } = await supabase
+      const eventId = session.metadata?.eventId;
+      
+      // 1. Update Order Status
+      await supabase
         .from('orders')
         .update({ status: 'paid' })
         .eq('id', orderId);
 
-      if (error) {
-        console.error('Erro ao atualizar pedido:', error);
+      // 2. Calculate and execute REVENUE SPLIT
+      if (eventId) {
+        try {
+          const { data: event } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', eventId)
+            .single();
+
+          if (event) {
+            const amountTotal = session.amount_total || 0;
+            const photographerCut = Math.floor(amountTotal * (event.commission_photographer / 100));
+            const producerCut = Math.floor(amountTotal * (event.commission_producer / 100));
+            const platformCut = amountTotal - photographerCut - producerCut;
+
+            let photographerTransferId = null;
+            let producerTransferId = null;
+
+            // Photographer Transfer
+            if (event.photographer_id) {
+              const { data: photoProfile } = await supabase
+                .from('profiles')
+                .select('stripe_account_id')
+                .eq('id', event.photographer_id)
+                .single();
+
+              if (photoProfile?.stripe_account_id) {
+                const transfer = await stripe.transfers.create({
+                  amount: photographerCut,
+                  currency: 'brl',
+                  destination: photoProfile.stripe_account_id,
+                  description: `Venda fotos Evento ${event.name}`,
+                  metadata: { orderId, eventId }
+                });
+                photographerTransferId = transfer.id;
+              }
+            }
+
+            // Producer Transfer
+            if (event.producer_id && producerCut > 0) {
+              const { data: prodProfile } = await supabase
+                .from('profiles')
+                .select('stripe_account_id')
+                .eq('id', event.producer_id)
+                .single();
+
+              if (prodProfile?.stripe_account_id) {
+                const transfer = await stripe.transfers.create({
+                  amount: producerCut,
+                  currency: 'brl',
+                  destination: prodProfile.stripe_account_id,
+                  description: `Comissão Produtor Evento ${event.name}`,
+                  metadata: { orderId, eventId }
+                });
+                producerTransferId = transfer.id;
+              }
+            }
+
+            // Record in revenue_splits
+            await supabase
+              .from('revenue_splits')
+              .insert({
+                order_id: orderId,
+                event_id: eventId,
+                total_amount: amountTotal / 100,
+                photographer_id: event.photographer_id,
+                photographer_amount: photographerCut / 100,
+                producer_id: event.producer_id,
+                producer_amount: producerCut / 100,
+                platform_amount: platformCut / 100,
+                status: (photographerTransferId || producerTransferId) ? 'paid' : 'pending'
+              });
+          }
+        } catch (splitErr) {
+          console.error('❌ Erro no Revenue Split:', splitErr);
+        }
       }
 
       // CRM Tracking: Log purchase
       if (customerEmail) {
-        await trackActivity(customerEmail, 'PURCHASE', undefined, { 
+        await trackActivityInternal(customerEmail, 'PURCHASE', undefined, { 
           order_id: orderId,
           amount: amount
         });
       }
 
-      // Enviar de E-mail de Confirmação via Resend
+      // Enviar de E-mail de Confirmação
       if (customerEmail && process.env.RESEND_API_KEY) {
         try {
           await resend.emails.send({
-            from: '4Dance <contato@4dance.com.br>', // Altere para seu domínio verificado
+            from: '4Dance <contato@4dance.com.br>', 
             to: customerEmail,
             subject: 'Suas fotos estão prontas! 📸 | 4Dance',
             react: PurchaseEmail({ customerName, orderId, amount }),

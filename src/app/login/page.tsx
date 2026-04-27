@@ -51,6 +51,8 @@ export default function LoginPage() {
           window.location.href = '/admin';
         } else if (profile.role === 'PHOTOGRAPHER') {
           window.location.href = '/portal-fotografo';
+        } else if (profile.role === 'PRODUCER') {
+          window.location.href = '/portal-produtor';
         } else {
           window.location.href = '/minhas-fotos';
         }

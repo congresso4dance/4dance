@@ -7,7 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendWelcomeEmail(to: string, name: string) {
   try {
     const { data, error } = await resend.emails.send({
-      from: '4Dance <contato@diadafoto.com.br>', // Use um domínio verificado no seu Resend
+      from: '4Dance <congresso4dance@gmail.com>', 
       to: [to],
       subject: 'Bem-vindo ao 4Dance! ✨',
       html: `
