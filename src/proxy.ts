@@ -47,7 +47,8 @@ function isRateLimited(ip: string) {
 }
 
 export default async function proxy(request: NextRequest) {
-  const ip = request.ip || 'anonymous'
+  // @ts-ignore
+  const ip = request.ip || request.headers.get('x-forwarded-for') || 'anonymous'
   
   // 1. 🔒 Rate Limiting
   if (isRateLimited(ip)) {
