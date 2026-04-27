@@ -7,6 +7,8 @@ export type ActivityType = 'SCAN' | 'FAVORITE' | 'CART' | 'PURCHASE' | 'LOGIN';
 /**
  * 🔒 SEGURANÇA: Registra atividades no CRM com validação de identidade.
  */
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
 /**
  * 🔒 INTERNO: Registra atividades no CRM sem validação de usuário (para Webhooks/Server)
  */
@@ -17,7 +19,7 @@ export async function trackActivityInternal(
     metadata: any = {}
   ) {
     // Usar Service Role para garantir que o log seja gravado mesmo sem sessão (ex: Webhook)
-    const supabase = createClient(
+    const supabase = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
@@ -71,8 +73,4 @@ export async function trackActivity(
     return { success: false, error: err };
   }
 }
-
-// Helper import needed for trackActivityInternal
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-const createClient = createSupabaseClient;
 
