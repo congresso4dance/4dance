@@ -6,14 +6,29 @@ import { Resend } from 'resend';
 import PurchaseEmail from '@/components/emails/PurchaseEmail';
 import { trackActivityInternal } from '@/app/actions/crm-actions';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27-acacia' as any,
-});
+let stripeInstance: Stripe | null = null;
+function getStripe() {
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-01-27-acacia' as any,
+    });
+  }
+  return stripeInstance;
+}
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+let resendInstance: Resend | null = null;
+function getResend() {
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY!);
+  }
+  return resendInstance;
+}
+
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(req: Request) {
+  const stripe = getStripe();
+  const resend = getResend();
   const body = await req.text();
   const signature = (await headers()).get('stripe-signature') as string;
 
