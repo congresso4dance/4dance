@@ -3,12 +3,20 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { calculateUnitPrice } from '@/utils/pricing';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27-acacia' as any,
-});
+let stripeInstance: Stripe | null = null;
+
+function getStripe() {
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-01-27-acacia' as any,
+    });
+  }
+  return stripeInstance;
+}
 
 export async function POST(req: Request) {
   try {
+    const stripe = getStripe();
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
