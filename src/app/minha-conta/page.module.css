@@ -1,0 +1,218 @@
+.portalContainer {
+  display: flex;
+  min-height: 100vh;
+  background: #050505;
+  color: #fff;
+}
+
+.loadingScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #050505;
+}
+
+.mainContent {
+  flex: 1;
+  padding: 3rem;
+  max-width: 1200px;
+}
+
+.welcomeHeader {
+  margin-bottom: 2.5rem;
+}
+
+.welcomeHeader h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+
+.welcomeHeader p {
+  opacity: 0.5;
+  font-size: 1rem;
+}
+
+/* STATS */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 2rem;
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.statIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.statValue {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+/* ACTIONS */
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 3rem;
+}
+
+.actionCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.actionCard:hover {
+  background: rgba(206, 172, 102, 0.06);
+  border-color: rgba(206, 172, 102, 0.2);
+  transform: translateY(-2px);
+}
+
+.actionIcon {
+  width: 52px;
+  height: 52px;
+  background: rgba(206, 172, 102, 0.1);
+  color: var(--primary);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.actionCard h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.actionCard p {
+  font-size: 0.78rem;
+  opacity: 0.5;
+  line-height: 1.4;
+}
+
+.actionArrow {
+  margin-left: auto;
+  opacity: 0.3;
+  flex-shrink: 0;
+}
+
+.actionCard:hover .actionArrow {
+  opacity: 0.8;
+}
+
+/* RECENT */
+.recentSection {
+  margin-bottom: 3rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.seeAllLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--primary);
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+.seeAllLink:hover {
+  opacity: 1;
+}
+
+.recentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.recentPhoto {
+  aspect-ratio: 3/4;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: #111;
+}
+
+.photoLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
+@media (max-width: 1200px) {
+  .statsGrid,
+  .actionsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .recentGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 1.5rem;
+  }
+  .statsGrid,
+  .actionsGrid {
+    grid-template-columns: 1fr;
+  }
+  .recentGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
