@@ -1,15 +1,36 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { UserSearch, Camera, Upload, CheckCircle2, AlertCircle, X, Sparkles, Search } from "lucide-react";
+import { useCallback, useState, useRef, useEffect } from "react";
+import { Camera, Upload, X, Sparkles, Search } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { verifyFacesWithAI } from "@/app/actions/ai-verification";
 import styles from "./GallerySearch.module.css";
 import { motion, AnimatePresence } from "framer-motion";
 import * as faceapi from 'face-api.js';
 import { trackActivity } from "@/app/actions/crm-actions";
 
-export default function GallerySearch({ photos, eventId, onFilter }: { photos: any[], eventId: string, onFilter: (filteredPhotos: any[] | null) => void }) {
+type GalleryPhoto = {
+  id: string;
+  full_res_url?: string | null;
+  [key: string]: unknown;
+};
+
+type MatchPhotoFaceResult = {
+  photo_id: string;
+};
+
+type AiConfig = {
+  match_threshold: number;
+  gemini_enabled: boolean;
+  max_search_results: number;
+};
+
+const defaultAiConfig: AiConfig = {
+  match_threshold: 0.8,
+  gemini_enabled: true,
+  max_search_results: 200,
+};
+
+export default function GallerySearch({ photos, eventId, onFilter }: { photos: GalleryPhoto[], eventId: string, onFilter: (filteredPhotos: GalleryPhoto[] | null) => void }) {
   const [isScanning, setIsScanning] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [referenceDescriptors, setReferenceDescriptors] = useState<Float32Array[]>([]);
@@ -19,11 +40,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  useEffect(() => {
-    loadModels();
-  }, []);
-
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     if (modelsLoaded) return true;
     setStatus("Iniciando motor de IA...");
     const MODEL_URL = `${window.location.origin}/models`;
@@ -40,7 +57,15 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
       setStatus("Falha ao carregar IA. Verifique sua conexão.");
       return false;
     }
-  };
+  }, [modelsLoaded]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadModels();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadModels]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,20 +98,20 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
         setStatus("Rosto identificado! Refinando busca...");
         
         // Sempre busca com todos os rostos atuais
-        startGallerySearch(newDescriptors, [...referenceImages, file]);
+        startGallerySearch(newDescriptors);
       } else {
         setStatus("Nenhum rosto encontrado na sua foto. Tente outra!");
         setPreviewUrls(prev => prev.filter(p => p !== url));
         setReferenceImages(prev => prev.filter(f => f !== file));
         setIsScanning(false);
       }
-    } catch (err) {
+    } catch {
       setStatus("Erro ao processar imagem.");
       setIsScanning(false);
     }
   };
 
-  const startGallerySearch = async (descriptors: Float32Array[], images: File[]) => {
+  const startGallerySearch = async (descriptors: Float32Array[]) => {
     try {
       setStatus(descriptors.length > 1 ? "Buscando o casal na multidão..." : "Buscando fotos no servidor...");
       
@@ -97,30 +122,26 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
         .eq('key', 'ai_config')
         .single();
       
-      const config = settingsData?.value || { match_threshold: 0.92, gemini_enabled: true, max_search_results: 100 };
+      const config = (settingsData?.value || defaultAiConfig) as AiConfig;
       
-      let commonPhotoIds: string[] | null = null;
+      const allMatchedIds = new Set<string>();
 
-      // Realiza a busca para cada rosto e faz a interseção
+      // União: busca cada rosto separadamente e une os resultados
       for (const descriptor of descriptors) {
         const embeddingString = `[${Array.from(descriptor).join(',')}]`;
         const { data: matchData, error: matchError } = await supabase.rpc('match_photo_faces', {
           query_embedding: embeddingString,
           match_threshold: config.match_threshold,
           match_count: config.max_search_results,
-          p_event_id: eventId // Filtro por evento ativado
+          p_event_id: eventId
         });
 
         if (matchError) throw matchError;
 
-        const currentIds = matchData.map((m: any) => m.photo_id);
-        if (commonPhotoIds === null) {
-          commonPhotoIds = currentIds;
-        } else {
-          // Interseção: Apenas IDs que estão em ambos
-          commonPhotoIds = commonPhotoIds.filter(id => currentIds.includes(id));
-        }
+        (matchData as MatchPhotoFaceResult[] | null)?.forEach((match) => allMatchedIds.add(match.photo_id));
       }
+
+      const commonPhotoIds = allMatchedIds.size > 0 ? Array.from(allMatchedIds) : null;
 
       let success = false;
       let resultCount = 0;
@@ -132,14 +153,18 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
           .select('*')
           .in('id', photoIds);
 
-        if (!photoData || photoData.length === 0) {
+        // Sign URLs for private buckets
+        const { getSignedUrlsAction } = await import('@/app/actions/storage');
+        const signedPhotoData = (await getSignedUrlsAction(photoData || [])) as GalleryPhoto[];
+
+        if (!signedPhotoData || signedPhotoData.length === 0) {
           onFilter(null);
           setStatus("Erro ao recuperar fotos para verificação.");
           setIsScanning(false);
           return;
         }
 
-        const currentEventId = photoData[0].event_id;
+        const currentEventId = signedPhotoData[0].event_id as string;
 
         // 1.5 Track Activity (IA SEARCH) - Pegamos o email se logado ou associamos depois
         const { data: { user } } = await supabase.auth.getUser();
@@ -175,14 +200,14 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
         const uniqueFinalIds = Array.from(new Set(finalPhotoIds));
 
         if (uniqueFinalIds.length > 0) {
-          const finalPhotos = photoData.filter((p: any) => uniqueFinalIds.includes(p.id));
+          const finalPhotos = (signedPhotoData).filter((photo) => uniqueFinalIds.includes(photo.id));
           onFilter(finalPhotos);
           setStatus(`Encontramos ${uniqueFinalIds.length} fotos perfeitas para você! 🔍`);
           success = true;
           resultCount = uniqueFinalIds.length;
         } else {
           // Se o refinamento for severo demais, mostramos o resultado original da busca vetorial
-          onFilter(photoData);
+          onFilter(signedPhotoData);
           setStatus(`Encontramos ${photoIds.length} fotos similares. 🔍`);
           success = true;
           resultCount = photoIds.length;
@@ -234,8 +259,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
     setStatus("");
     const lowerQuery = query.toLowerCase();
     const filtered = photos
-      .filter(p => p.full_res_url?.toLowerCase().includes(lowerQuery))
-      .map(p => p.id);
+      .filter((photo) => photo.full_res_url?.toLowerCase().includes(lowerQuery));
     
     onFilter(filtered);
   };
@@ -301,6 +325,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
           <div className={styles.selectedFaces}>
             {previewUrls.map((url, i) => (
               <div key={i} className={styles.faceTag}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="Face" className={styles.faceThumb} />
                 {referenceDescriptors.length > 1 && (
                   <button className={styles.removeFace} onClick={() => {
@@ -313,7 +338,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
                     setReferenceDescriptors(newDescs);
                     setReferenceImages(newImages);
                     setPreviewUrls(newUrls);
-                    if (newDescs.length > 0) startGallerySearch(newDescs, newImages);
+                    if (newDescs.length > 0) startGallerySearch(newDescs);
                     else clearFilter();
                   }}><X size={10} /></button>
                 )}
@@ -371,13 +396,14 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
                   transition={{ duration: 2, repeat: Infinity }}
                 >
                   <Sparkles size={16} /> 4D IA VISION
-                </motion.div>
+                 </motion.div>
                 <h3>{status || "Iniciando Processamento"}</h3>
               </div>
 
               <div className={styles.imageStage}>
                 {previewUrls.length > 0 ? (
                   <div className={styles.previewContainer}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={previewUrls[previewUrls.length - 1]} alt="Scanning" className={styles.previewImage} />
                     <motion.div 
                       className={styles.scanLine}
@@ -416,4 +442,3 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: a
     </div>
   );
 }
-

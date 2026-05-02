@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { motion } from 'framer-motion';
 import { 
   Trophy, 
-  Users, 
   Camera, 
   TrendingUp, 
   DollarSign, 
@@ -16,6 +14,16 @@ import {
 import styles from './portal-produtor.module.css';
 import Link from 'next/link';
 
+type ProducerEvent = {
+  id: string;
+  title?: string | null;
+  name?: string | null;
+  event_date?: string | null;
+  cover_url?: string | null;
+  location?: string | null;
+  commission_producer?: number | null;
+};
+
 export default function ProducerDashboard() {
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -23,7 +31,7 @@ export default function ProducerDashboard() {
     totalSales: 0,
     activeEvents: 0
   });
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<ProducerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
@@ -61,6 +69,7 @@ export default function ProducerDashboard() {
     }
 
     fetchProducerData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) return <div className={styles.loading}>Carregando Portal do Produtor...</div>;
@@ -129,20 +138,22 @@ export default function ProducerDashboard() {
           {events.length === 0 ? (
             <div className={styles.emptyState}>
               <Calendar size={48} color="rgba(255,255,255,0.1)" />
-              <p>Nenhum evento vinculado como produtor.</p>
-              <button className={styles.secondaryBtn}>Vincular fotógrafo agora</button>
+              <p>Nenhum evento vinculado como produtor ainda.</p>
+              <p style={{ fontSize: '0.85rem', opacity: 0.5, marginTop: '0.5rem' }}>
+                Entre em contato com a plataforma para vincular seus eventos ao seu perfil.
+              </p>
             </div>
           ) : (
             events.map((event) => (
               <div key={event.id} className={styles.eventCard}>
                 <div className={styles.eventInfo}>
-                  <h4>{event.name}</h4>
-                  <span>{new Date(event.event_date).toLocaleDateString('pt-BR')}</span>
+                  <h4>{event.name || event.title || 'Evento 4Dance'}</h4>
+                  <span>{event.event_date ? new Date(event.event_date).toLocaleDateString('pt-BR') : 'Data não definida'}</span>
                 </div>
                 <div className={styles.eventMetrics}>
                   <div className={styles.metric}>
                     <span>Sua parte</span>
-                    <strong>{event.commission_producer}%</strong>
+                    <strong>{event.commission_producer ?? 0}%</strong>
                   </div>
                   <ChevronRight size={20} color="rgba(255,255,255,0.3)" />
                 </div>
@@ -153,19 +164,23 @@ export default function ProducerDashboard() {
       </section>
 
       {/* Simulator Section */}
-      <section className={styles.simulator}>
-        <div className={styles.simulatorContent}>
-          <h3>Simulador de Ganhos</h3>
-          <p>Veja quanto você pode faturar no seu próximo evento.</p>
-          <div className={styles.simInput}>
-            <span>Se vender 100 fotos → você ganha aprox. </span>
-            <strong className={styles.highlight}>R$ 450,00</strong>
+      {events.length > 0 && (
+        <section className={styles.simulator}>
+          <div className={styles.simulatorContent}>
+            <h3>Simulador de Ganhos</h3>
+            <p>Veja quanto você pode faturar no seu próximo evento.</p>
+            <div className={styles.simInput}>
+              <span>Se vender 100 fotos × R$15 → você ganha aprox. </span>
+              <strong className={styles.highlight}>
+                R$ {(100 * 15 * ((events[0].commission_producer ?? 15) / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </strong>
+            </div>
           </div>
-        </div>
-        <div className={styles.simVisual}>
-           <Trophy size={64} color="var(--primary)" />
-        </div>
-      </section>
+          <div className={styles.simVisual}>
+            <Trophy size={64} color="var(--primary)" />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

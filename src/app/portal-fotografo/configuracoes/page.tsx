@@ -3,12 +3,23 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import styles from '../fotografo.module.css';
-import { CreditCard, ShieldCheck, User as UserIcon, Link as LinkIcon } from 'lucide-react';
+import { CreditCard, ShieldCheck, User as UserIcon, Link as LinkIcon, CheckCircle } from 'lucide-react';
+
+type Profile = {
+  full_name?: string | null;
+  email?: string | null;
+  stripe_account_id?: string | null;
+  pix_key?: string | null;
+};
 
 export default function PhotographerSettings() {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [pixKey, setPixKey] = useState('');
+  const [savingPix, setSavingPix] = useState(false);
+  const [pixSaved, setPixSaved] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -16,17 +27,38 @@ export default function PhotographerSettings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      setUserId(user.id);
       const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      
+
       setProfile(data);
+      setPixKey(data?.pix_key || '');
       setLoading(false);
     }
     loadProfile();
   }, [supabase]);
+
+  const handleSavePix = async () => {
+    if (!userId) return;
+    setSavingPix(true);
+    setPixSaved(false);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ pix_key: pixKey })
+      .eq('id', userId);
+
+    setSavingPix(false);
+    if (!error) {
+      setPixSaved(true);
+      setTimeout(() => setPixSaved(false), 3000);
+    } else {
+      alert('Erro ao salvar chave Pix. Tente novamente.');
+    }
+  };
 
   const handleStripeConnect = async () => {
     setConnecting(true);
@@ -39,7 +71,7 @@ export default function PhotographerSettings() {
       } else {
         alert('Erro ao gerar link do Stripe: ' + (data.error || 'Erro desconhecido'));
       }
-    } catch (err) {
+    } catch {
       alert('Erro de conexão com o servidor.');
     } finally {
       setConnecting(false);
@@ -139,31 +171,43 @@ export default function PhotographerSettings() {
       <section>
         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
           <label style={{ fontSize: '0.85rem', opacity: 0.5, marginBottom: '8px', display: 'block' }}>Chave Pix para Emergências</label>
-          <input 
-            type="text" 
-            placeholder="CPF, E-mail ou Celular" 
-            defaultValue={profile?.pix_key || ''}
-            style={{ 
-              width: '100%', 
-              background: '#111', 
-              border: '1px solid #333', 
-              padding: '0.8rem', 
-              borderRadius: '8px', 
-              color: '#fff' 
+          <input
+            type="text"
+            placeholder="CPF, E-mail ou Celular"
+            value={pixKey}
+            onChange={(e) => setPixKey(e.target.value)}
+            style={{
+              width: '100%',
+              background: '#111',
+              border: '1px solid #333',
+              padding: '0.8rem',
+              borderRadius: '8px',
+              color: '#fff'
             }}
           />
-          <button style={{ 
-            marginTop: '1rem', 
-            background: 'transparent', 
-            border: '1px solid #ceac66', 
-            color: '#ceac66', 
-            padding: '0.6rem 1.2rem', 
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            cursor: 'pointer'
-          }}>
-            Salvar Chave
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1rem' }}>
+            <button
+              onClick={handleSavePix}
+              disabled={savingPix}
+              style={{
+                background: 'transparent',
+                border: '1px solid #ceac66',
+                color: '#ceac66',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                cursor: savingPix ? 'not-allowed' : 'pointer',
+                opacity: savingPix ? 0.6 : 1
+              }}
+            >
+              {savingPix ? 'Salvando...' : 'Salvar Chave'}
+            </button>
+            {pixSaved && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#22c55e', fontSize: '0.9rem' }}>
+                <CheckCircle size={16} /> Salvo com sucesso!
+              </span>
+            )}
+          </div>
         </div>
       </section>
     </div>
