@@ -1,0 +1,232 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  color: #fff;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  margin: 0.3rem 0 0.5rem;
+  line-height: 1;
+}
+
+.header p,
+.listHeader span {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.metric {
+  min-width: 130px;
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.metric strong {
+  font-size: 2rem;
+}
+
+.metric span {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+}
+
+.notice {
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+.success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #7dd3ae;
+}
+
+.error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.form,
+.card,
+.empty {
+  border-radius: 8px;
+  background: #080808;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.form {
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 2rem;
+}
+
+.formHeader,
+.listHeader,
+.cardTop,
+.primaryButton,
+.deleteButton {
+  display: flex;
+  align-items: center;
+}
+
+.formHeader {
+  gap: 0.6rem;
+}
+
+.formHeader h2,
+.listHeader h2,
+.card h3 {
+  margin: 0;
+}
+
+.form label {
+  display: grid;
+  gap: 0.45rem;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.form input,
+.form textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  padding: 0.85rem 0.95rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.form input:focus,
+.form textarea:focus {
+  outline: none;
+  border-color: rgba(225, 29, 72, 0.65);
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.15);
+}
+
+.primaryButton,
+.deleteButton {
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.primaryButton {
+  padding: 0.9rem 1rem;
+  background: var(--primary);
+  color: #fff;
+}
+
+.list {
+  display: grid;
+  gap: 1rem;
+}
+
+.listHeader {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.card {
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.cardTop {
+  gap: 0.85rem;
+}
+
+.cardTop span {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.85rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(225, 29, 72, 0.16);
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.65;
+}
+
+.deleteButton {
+  width: fit-content;
+  padding: 0.65rem 0.8rem;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.empty {
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+@media (max-width: 900px) {
+  .header,
+  .listHeader {
+    flex-direction: column;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form {
+    position: static;
+  }
+}
