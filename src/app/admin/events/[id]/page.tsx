@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AIIndexer from '@/components/AIIndexer';
 import styles from '../edit-event.module.css';
+import { signDisplayPhotos } from '@/app/actions/storage-actions';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
@@ -44,9 +45,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [photographers, setPhotographers] = useState<Photographer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [coverUrl, setCoverUrl] = useState('');
+  const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const originalCoverUrl = useRef('');
   const router = useRouter();
   const supabase = createClient();
 
@@ -75,7 +77,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           commission_rate: event.commission_rate ?? 0.10,
           photographer_id: event.photographer_id || '',
         });
-        setCoverUrl(event.cover_url || '');
+        originalCoverUrl.current = event.cover_url || '';
       }
 
       // 2. Fetch Photographers
@@ -83,17 +85,25 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         .from('user_profiles')
         .select('id, full_name')
         .eq('role', 'PHOTOGRAPHER');
-      
+
       if (photogs) setPhotographers(photogs);
 
-      // 2. Fetch Photos
+      // 3. Fetch Photos and sign URLs
       const { data: photosData } = await supabase
         .from('photos')
         .select('*')
         .eq('event_id', id)
         .order('created_at', { ascending: true });
 
-      if (photosData) setPhotos(photosData);
+      if (photosData) {
+        const signed = await signDisplayPhotos(photosData as unknown as Parameters<typeof signDisplayPhotos>[0]);
+        setPhotos(signed as unknown as Photo[]);
+        // Find which photo is the current cover by matching original URL
+        const coverPhoto = (photosData as Photo[]).find(
+          p => p.full_res_url === originalCoverUrl.current
+        );
+        if (coverPhoto) setCoverPhotoId(coverPhoto.id);
+      }
       setLoading(false);
     }
     loadData();
