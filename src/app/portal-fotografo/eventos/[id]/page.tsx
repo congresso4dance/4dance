@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import styles from '../../fotografo.module.css';
 import { Camera, Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 
 export default function PhotographerEventDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -58,17 +59,17 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
 
         // 2. Upload High Res
         const { error: fullError } = await supabase.storage
-          .from('event-photos')
+          .from(PHOTO_STORAGE_BUCKET)
           .upload(fullPath, file);
 
         // 3. Upload Watermarked
         const { error: thumbError } = await supabase.storage
-          .from('event-photos')
+          .from(PHOTO_STORAGE_BUCKET)
           .upload(thumbPath, wmFile);
 
         if (!fullError && !thumbError) {
-          const fullUrl = supabase.storage.from('event-photos').getPublicUrl(fullPath).data.publicUrl;
-          const thumbUrl = supabase.storage.from('event-photos').getPublicUrl(thumbPath).data.publicUrl;
+          const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
+          const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
 
           await supabase.from('photos').insert({
             event_id: id,

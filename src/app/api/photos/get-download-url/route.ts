@@ -1,11 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { LEGACY_PHOTO_STORAGE_BUCKET, PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+type PhotoEvent = {
+  id: string;
+  is_paid: boolean | null;
+};
+
+type DownloadPhoto = {
+  id: string;
+  storage_path: string;
+  events: PhotoEvent | null;
+};
+
+let supabaseAdmin: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseAdmin() {
+  if (!supabaseAdmin) {
+    supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+
+  return supabaseAdmin;
+}
 
 export async function GET(req: Request) {
   try {
@@ -17,20 +37,25 @@ export async function GET(req: Request) {
     }
 
     const supabaseServer = await createServerClient();
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: { user } } = await supabaseServer.auth.getUser();
 
     // 1. Fetch photo and its event pricing policy
-    const { data: photo, error: photoError } = await supabaseAdmin
+    const { data: photoData, error: photoError } = await supabaseAdmin
       .from('photos')
       .select('id, storage_path, events(id, is_paid)') // 🔒 Lei 9: Projeção explícita
       .eq('id', photoId)
       .single();
+    const photo = photoData as DownloadPhoto | null;
 
     if (photoError || !photo) {
       return NextResponse.json({ error: 'Foto não encontrada ou sem permissão' }, { status: 404 });
     }
 
-    const event = photo.events as any;
+    const event = photo.events as PhotoEvent | null;
+    if (!event) {
+      return NextResponse.json({ error: 'Evento da foto não encontrado' }, { status: 404 });
+    }
 
     // 2. LOGIC: Is it free or paid?
     let authorized = false;
@@ -62,7 +87,7 @@ export async function GET(req: Request) {
     }
 
     // 3. GENERATE SIGNED URL (Resilient to bucket name)
-    const buckets = ['event-photos', 'photos'];
+    const buckets = [PHOTO_STORAGE_BUCKET, LEGACY_PHOTO_STORAGE_BUCKET];
     let signedUrl = null;
     let lastError = null;
 
@@ -87,7 +112,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ url: signedUrl });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Download API Error:', err);
     return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
   }

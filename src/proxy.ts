@@ -17,7 +17,7 @@ function generateCSP() {
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' https://*.supabase.co https://*.stripe.com https://api.google.com;
+    connect-src 'self' https://*.supabase.co https://*.stripe.com https://api.google.com https://www.google-analytics.com https://region1.google-analytics.com;
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim()
 
@@ -47,8 +47,7 @@ function isRateLimited(ip: string) {
 }
 
 export default async function proxy(request: NextRequest) {
-  // @ts-ignore
-  const ip = request.ip || request.headers.get('x-forwarded-for') || 'anonymous'
+  const ip = request.headers.get('x-forwarded-for') || 'anonymous'
   
   // 1. 🔒 Rate Limiting
   if (isRateLimited(ip)) {
@@ -84,12 +83,16 @@ export default async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({
             request: {
               headers: requestHeaders,
             },
           })
+          response.headers.set('Content-Security-Policy', cspHeader)
+          response.headers.set('X-Content-Type-Options', 'nosniff')
+          response.headers.set('X-Frame-Options', 'DENY')
+          response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
@@ -197,6 +200,16 @@ export default async function proxy(request: NextRequest) {
     const allowedRoles = ['PRODUCER', 'owner', 'admin']
     if (!allowedRoles.includes(role)) {
       return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
+
+  if (
+    request.nextUrl.pathname.startsWith('/minha-conta') ||
+    request.nextUrl.pathname.startsWith('/minhas-fotos') ||
+    request.nextUrl.pathname.startsWith('/meus-pedidos')
+  ) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
