@@ -10,6 +10,8 @@ import Image from 'next/image';
 import AIIndexer from '@/components/AIIndexer';
 import styles from '../edit-event.module.css';
 import { signDisplayPhotos } from '@/app/actions/storage-actions';
+import { useToast } from '@/hooks/useToast';
+import ToastContainer from '@/components/ToastContainer';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
@@ -46,8 +48,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { toasts, showToast, removeToast } = useToast();
   const originalCoverUrl = useRef('');
   const router = useRouter();
   const supabase = createClient();
@@ -125,7 +127,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       .eq('id', id);
 
     if (error) {
-      alert('Erro ao salvar: ' + error.message);
+      showToast('Erro ao salvar: ' + error.message, 'error');
     } else {
       await logAdminAction('UPDATE_EVENT', { title: data.title }, id);
       showToast('Evento atualizado com sucesso!');
@@ -134,14 +136,24 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     setSaving(false);
   };
 
-  const setAsCover = async (url: string) => {
+  const setAsCover = async (photoId: string) => {
+    // Fetch original (non-signed) URL from DB to store as cover
+    const { data: photoData } = await supabase
+      .from('photos')
+      .select('full_res_url')
+      .eq('id', photoId)
+      .single();
+
+    if (!photoData) return;
+
     const { error } = await supabase
       .from('events')
-      .update({ cover_url: url })
+      .update({ cover_url: photoData.full_res_url })
       .eq('id', id);
-    
+
     if (!error) {
-      setCoverUrl(url);
+      setCoverPhotoId(photoId);
+      showToast('Capa atualizada!');
       await logAdminAction('UPDATE_EVENT', { subtitle: 'Capa alterada' }, id);
     }
   };
@@ -199,22 +211,18 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     const { error } = await supabase.from('events').delete().eq('id', id);
 
     if (error) {
-      alert('Erro ao excluir: ' + error.message);
+      showToast('Erro ao excluir: ' + error.message, 'error');
     } else {
       router.push('/admin');
     }
   };
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
 
   if (loading) return <div className={styles.container}>Carregando...</div>;
 
   return (
     <div className={styles.container}>
-      {toast && <div className={styles.toast}>{toast}</div>}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <header className={styles.header}>
         <h1 className={styles.title}>Editar Evento</h1>
         <button onClick={deleteEvent} className={styles.deleteEventBtn}>
@@ -374,12 +382,12 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             <div 
               key={photo.id} 
               onClick={() => togglePhotoSelection(photo.id)}
-              className={`${styles.photoCard} ${photo.full_res_url === coverUrl ? styles.isCover : ''} ${selectedIds.has(photo.id) ? styles.selected : ''}`}
+              className={`${styles.photoCard} ${photo.id === coverPhotoId ? styles.isCover : ''} ${selectedIds.has(photo.id) ? styles.selected : ''}`}
             >
-              <Image src={photo.full_res_url} alt="Foto do evento" fill />
-              {photo.full_res_url === coverUrl && <span className={styles.coverBadge}>CAPA</span>}
+              <Image src={photo.full_res_url} alt="Foto do evento" fill unoptimized />
+              {photo.id === coverPhotoId && <span className={styles.coverBadge}>CAPA</span>}
               <div className={styles.photoOverlay} onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => setAsCover(photo.full_res_url)} className={styles.actionBtn}>Definir Capa</button>
+                <button onClick={() => setAsCover(photo.id)} className={styles.actionBtn}>Definir Capa</button>
                 <button onClick={() => deletePhoto(photo)} className={`${styles.actionBtn} ${styles.deleteBtn}`}>Excluir</button>
               </div>
             </div>

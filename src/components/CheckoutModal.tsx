@@ -35,10 +35,11 @@ function getErrorMessage(error: unknown) {
 
 export default function CheckoutModal({ isOpen, onClose, items, total, savings, originalTotal, onRemove }: CheckoutModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const handlePayment = async () => {
     if (items.length === 0) return;
-
+    setPaymentError(null);
     setIsProcessing(true);
     try {
       const response = await fetch('/api/checkout', {
@@ -58,7 +59,7 @@ export default function CheckoutModal({ isOpen, onClose, items, total, savings, 
         throw new Error(data.error || 'Erro ao criar sessão de checkout');
       }
     } catch (err: unknown) {
-      alert('Erro no pagamento: ' + getErrorMessage(err));
+      setPaymentError('Erro no pagamento: ' + getErrorMessage(err));
       setIsProcessing(false);
     }
   };
@@ -239,6 +240,11 @@ export default function CheckoutModal({ isOpen, onClose, items, total, savings, 
                   </div>
                 </div>
 
+                {paymentError && (
+                  <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '10px', padding: '0.75rem 1rem', color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                    {paymentError}
+                  </div>
+                )}
                 <button
                   className={styles.checkoutActionBtn}
                   disabled={items.length === 0 || isProcessing}

@@ -8,6 +8,7 @@ import { Share2, QrCode, Download, Copy, ExternalLink, Camera } from 'lucide-rea
 export default function PhotographerDivulgacao() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -27,9 +28,10 @@ export default function PhotographerDivulgacao() {
     loadEvents();
   }, [supabase]);
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (eventId: string, text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Link copiado! 🚀');
+    setCopiedId(eventId);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   if (loading) return null;
@@ -61,7 +63,7 @@ export default function PhotographerDivulgacao() {
 
                 <div style={{ background: '#111', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <code style={{ fontSize: '0.85rem', color: '#ceac66' }}>{eventUrl}</code>
-                  <button onClick={() => copyToClipboard(eventUrl)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                  <button onClick={() => copyToClipboard(event.id, eventUrl)} style={{ background: 'transparent', border: 'none', color: copiedId === event.id ? '#22c55e' : '#fff', cursor: 'pointer' }}>
                     <Copy size={18} />
                   </button>
                 </div>

@@ -12,6 +12,7 @@ export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [newsletterError, setNewsletterError] = useState(false);
   const supabase = createClient();
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -19,6 +20,7 @@ export default function Footer() {
     if (!email || loading) return;
 
     setLoading(true);
+    setNewsletterError(false);
     try {
       const { error } = await supabase
         .from('leads')
@@ -35,7 +37,7 @@ export default function Footer() {
       setTimeout(() => setSubscribed(false), 5000);
     } catch (error) {
       console.error('Newsletter error:', error);
-      alert('Ocorreu um erro ao se inscrever. Tente novamente.');
+      setNewsletterError(true);
     } finally {
       setLoading(false);
     }
@@ -93,18 +95,23 @@ export default function Footer() {
                   Inscrito com sucesso! ✨
                 </motion.div>
               ) : (
-                <form className={styles.form} onSubmit={handleSubscribe}>
-                  <input 
-                    type="email" 
-                    placeholder="Seu melhor e-mail" 
-                    required 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <button type="submit" disabled={loading}>
-                    {loading ? '...' : 'Inscrever'}
-                  </button>
-                </form>
+                <>
+                  <form className={styles.form} onSubmit={handleSubscribe}>
+                    <input
+                      type="email"
+                      placeholder="Seu melhor e-mail"
+                      required
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setNewsletterError(false); }}
+                    />
+                    <button type="submit" disabled={loading}>
+                      {loading ? '...' : 'Inscrever'}
+                    </button>
+                  </form>
+                  {newsletterError && (
+                    <p style={{ color: '#ef4444', fontSize: '0.78rem', marginTop: '6px' }}>Erro ao inscrever. Tente novamente.</p>
+                  )}
+                </>
               )}
             </div>
           </div>

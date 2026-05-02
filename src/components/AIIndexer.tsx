@@ -94,6 +94,7 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
       
       try {
         // Load image for processing
+        if (!photo.full_res_url) continue;
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = photo.full_res_url;
@@ -143,7 +144,6 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
 
     setIsProcessing(false);
     setStatus("Indexação concluída com sucesso! 🚀");
-    alert("Galeria processada para IA!");
   }
 
   return (
