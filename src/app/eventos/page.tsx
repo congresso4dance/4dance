@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { signSingleUrl } from '@/utils/storage-helper';
 import Navbar from '@/components/Navbar';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -31,7 +32,16 @@ export default async function EventsListPage({
     query = query.contains('styles', [style]);
   }
 
-  const { data: events } = await query;
+  const { data: rawEvents } = await query;
+
+  const events = rawEvents
+    ? await Promise.all(
+        rawEvents.map(async (e) => ({
+          ...e,
+          cover_url: (await signSingleUrl(e.cover_url)) ?? e.cover_url,
+        }))
+      )
+    : [];
 
   return (
     <main className={styles.main}>

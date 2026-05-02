@@ -7,17 +7,27 @@ import EcosystemSection from "@/components/EcosystemSection";
 import SocialProof from "@/components/SocialProof";
 import CallToAction from "@/components/CallToAction";
 import { createClient } from "@/utils/supabase/server";
+import { signSingleUrl } from "@/utils/storage-helper";
 
 export default async function Home() {
   const supabase = await createClient();
 
   // Fetch more events for the dynamic Hero pool and Portfolio
-  const { data: events } = await supabase
+  const { data: rawEvents } = await supabase
     .from('events')
     .select('*')
     .eq('is_public', true)
     .order('event_date', { ascending: false })
     .limit(20);
+
+  const events = rawEvents
+    ? await Promise.all(
+        rawEvents.map(async (e) => ({
+          ...e,
+          cover_url: (await signSingleUrl(e.cover_url)) ?? e.cover_url,
+        }))
+      )
+    : [];
   
   // Fetch testimonials for Social Proof
   const { data: testimonials } = await supabase
@@ -28,10 +38,10 @@ export default async function Home() {
   return (
     <main>
       <Navbar />
-      <Hero events={events || []} />
+      <Hero events={events} />
       
       {/* Narrative Flow */}
-      <PortfolioSection events={events || []} />
+      <PortfolioSection events={events} />
       
       <TimelineSection />
       

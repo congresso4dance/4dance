@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import * as faceapi from 'face-api.js';
 import { Brain, Cpu, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import styles from './AIIndexer.module.css';
+import { signDisplayPhotos } from '@/app/actions/storage-actions';
 
 interface AIIndexerProps {
   eventId: string;
@@ -83,9 +84,12 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
       return;
     }
 
+    setStatus("Gerando URLs seguras...");
+    const signedPhotos = await signDisplayPhotos(pendingPhotos as { id: string; full_res_url?: string | null }[]);
+
     let processedCount = 0;
 
-    for (const photo of pendingPhotos) {
+    for (const photo of signedPhotos) {
       setStatus(`Processando IA: ${processedCount + 1} de ${pendingPhotos.length}...`);
       
       try {
