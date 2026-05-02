@@ -12,6 +12,7 @@ import styles from '../edit-event.module.css';
 import { signDisplayPhotos } from '@/app/actions/storage-actions';
 import { useToast } from '@/hooks/useToast';
 import ToastContainer from '@/components/ToastContainer';
+import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
@@ -171,7 +172,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const deletePhoto = async (photo: Photo) => {
     if (!confirm('Deseja realmente apagar esta foto?')) return;
 
-    await supabase.storage.from('event-photos').remove([photo.storage_path]);
+    await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove([photo.storage_path]);
     await supabase.from('photos').delete().eq('id', photo.id);
     
     await logAdminAction('DELETE_PHOTOS', { count: 1 }, id);
@@ -187,7 +188,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     const paths = selectedPhotos.map(p => p.storage_path);
 
     // 1. Storage
-    await supabase.storage.from('event-photos').remove(paths);
+    await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove(paths);
     
     // 2. DB
     await supabase.from('photos').delete().in('id', Array.from(selectedIds));
@@ -204,7 +205,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     
     const paths = photos.map(p => p.storage_path);
     if (paths.length > 0) {
-      await supabase.storage.from('event-photos').remove(paths);
+      await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove(paths);
     }
 
     await logAdminAction('DELETE_EVENT', { photo_count: photos.length }, id);
@@ -341,17 +342,17 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
                     // 2. Upload da versão original (Limpa)
                     const { error: fullError } = await supabase.storage
-                      .from('event-photos')
+                      .from(PHOTO_STORAGE_BUCKET)
                       .upload(fullPath, file);
 
                     // 3. Upload da versão com marca d'água
                     const { error: thumbError } = await supabase.storage
-                      .from('event-photos')
+                      .from(PHOTO_STORAGE_BUCKET)
                       .upload(thumbPath, wmFile);
 
                     if (!fullError && !thumbError) {
-                      const fullUrl = supabase.storage.from('event-photos').getPublicUrl(fullPath).data.publicUrl;
-                      const thumbUrl = supabase.storage.from('event-photos').getPublicUrl(thumbPath).data.publicUrl;
+                      const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
+                      const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
 
                       await supabase.from('photos').insert({
                         event_id: id,

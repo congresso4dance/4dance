@@ -14,7 +14,8 @@ import {
   Upload,
   Users,
   BadgeDollarSign,
-  Activity
+  Activity,
+  MessageSquareText
 } from 'lucide-react';
 
 export default async function AdminLayout({
@@ -63,6 +64,11 @@ export default async function AdminLayout({
             <Link href="/admin/importer" className={styles.navLink}>
               <Upload size={20} />
               <span>Importador</span>
+              <ChevronRight size={14} className={styles.chevron} />
+            </Link>
+            <Link href="/admin/testimonials" className={styles.navLink}>
+              <MessageSquareText size={20} />
+              <span>Depoimentos</span>
               <ChevronRight size={14} className={styles.chevron} />
             </Link>
           </div>

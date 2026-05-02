@@ -4,6 +4,16 @@ import styles from '../dashboard.module.css';
 import { Brain, Search, Users, Activity, Zap, DollarSign, TrendingDown, LayoutGrid } from 'lucide-react';
 import AnalyticsCharts from '@/components/AnalyticsCharts';
 
+type OrderMetric = {
+  created_at: string;
+  amount: number | null;
+  status: string | null;
+};
+
+function isPaidOrder(order: OrderMetric) {
+  return order.status === 'paid' || order.status === 'completed';
+}
+
 export default async function InsightsPage() {
   const supabase = await createClient();
 
@@ -15,15 +25,17 @@ export default async function InsightsPage() {
 
   // 2. Financial Metrics
   const { data: orders } = await supabase.from('orders').select('created_at, amount, status');
+  const paidOrders = (orders || []).filter(isPaidOrder);
+  const pendingOrders = (orders || []).filter((order) => order.status === 'pending');
   
-  const totalRevenue = orders?.filter(o => o.status === 'completed').reduce((acc, curr) => acc + curr.amount, 0) || 0;
-  const pendingRevenue = orders?.filter(o => o.status === 'pending').reduce((acc, curr) => acc + curr.amount, 0) || 0;
+  const totalRevenue = paidOrders.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const pendingRevenue = pendingOrders.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   // 3. Prepare Chart Data (Revenue Timeline)
-  const revenueByDay: any = {};
-  orders?.filter(o => o.status === 'completed').forEach(o => {
+  const revenueByDay: Record<string, number> = {};
+  paidOrders.forEach(o => {
     const day = new Date(o.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    revenueByDay[day] = (revenueByDay[day] || 0) + o.amount;
+    revenueByDay[day] = (revenueByDay[day] || 0) + (o.amount || 0);
   });
 
   const revenueData = Object.keys(revenueByDay).map(day => ({
@@ -33,8 +45,8 @@ export default async function InsightsPage() {
 
   // 4. Prepare Chart Data (Order Distribution)
   const orderStatusData = [
-    { name: 'Pagos', value: orders?.filter(o => o.status === 'completed').length || 0 },
-    { name: 'Pendentes', value: orders?.filter(o => o.status === 'pending').length || 0 }
+    { name: 'Pagos', value: paidOrders.length },
+    { name: 'Pendentes', value: pendingOrders.length }
   ];
 
   // 5. Prepare Funnel Data
@@ -42,7 +54,7 @@ export default async function InsightsPage() {
     { name: 'Leads Capturados', value: leadsCount || 0 },
     { name: 'Buscas IA Sucesso', value: successSearches || 0 },
     { name: 'Intenções de Compra', value: orders?.length || 0 },
-    { name: 'Vendas Reais', value: orders?.filter(o => o.status === 'completed').length || 0 }
+    { name: 'Vendas Reais', value: paidOrders.length }
   ];
 
   const coveragePercent = photosCount ? Math.round(((totalSearches || 0) / (photosCount || 1)) * 100) : 0; // Simplified coverage metric
