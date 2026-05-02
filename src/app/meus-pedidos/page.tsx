@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Download, LayoutGrid, Sparkles, User, LogOut, Loader2, Calendar } from 'lucide-react';
+import { useToast } from '@/hooks/useToast';
+import ToastContainer from '@/components/ToastContainer';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,7 +37,7 @@ export default function MyOrdersPage() {
   const [purchasedPhotos, setPurchasedPhotos] = useState<PurchasedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
-  
+  const { toasts, showToast, removeToast } = useToast();
   const router = useRouter();
   const supabase = createClient();
 
@@ -103,7 +105,7 @@ export default function MyOrdersPage() {
       document.body.removeChild(link);
     } catch (err) {
       console.error('Download error:', err);
-      alert('Erro ao gerar download. Tente novamente em alguns segundos.');
+      showToast('Erro ao gerar download. Tente novamente.', 'error');
     } finally {
       setDownloading(null);
     }
@@ -125,6 +127,7 @@ export default function MyOrdersPage() {
 
   return (
     <div className={styles.portalContainer}>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <nav className={styles.sidebar}>
         <div className={styles.navTop}>
           <div className={styles.logo}>4DANCE <span>CLIENTE</span></div>

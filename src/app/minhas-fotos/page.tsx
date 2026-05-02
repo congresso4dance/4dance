@@ -8,6 +8,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as faceapi from 'face-api.js';
+import { useToast } from '@/hooks/useToast';
+import ToastContainer from '@/components/ToastContainer';
 import styles from './portal.module.css';
 import WatermarkGrid from '@/components/WatermarkGrid';
 import { useCart } from '@/hooks/useCart';
@@ -60,15 +62,15 @@ function MinhasFotosContent() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const { addToCart, isInCart } = useCart();
+  const { toasts, showToast, removeToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      setToast('🎉 Pagamento confirmado! Suas fotos em HD já estão disponíveis aqui.');
+      showToast('Pagamento confirmado! Suas fotos em HD já estão disponíveis aqui.', 'success');
       window.history.replaceState(null, '', '/minhas-fotos');
     }
   }, [searchParams]);
@@ -126,7 +128,7 @@ function MinhasFotosContent() {
         .withFaceDescriptor();
 
       if (!detection) {
-        alert("Não conseguimos detectar seu rosto. Tente uma foto mais clara!");
+        showToast("Rosto não detectado. Tente uma foto com melhor iluminação.", "error");
         setSearching(false);
         return;
       }
@@ -143,7 +145,7 @@ function MinhasFotosContent() {
       if (matchError) throw matchError;
 
       if (!matchData || matchData.length === 0) {
-        alert("Nenhuma foto encontrada ainda. Continue dançando e em breve você aparecerá aqui!");
+        showToast("Nenhuma foto encontrada ainda. Continue dançando!", "info");
         setPhotos([]);
         setSearching(false);
         return;
@@ -171,7 +173,7 @@ function MinhasFotosContent() {
       }
 
       if (matchedPhotoIds.length === 0) {
-        alert("Nenhuma foto certeira encontrada. Tente outra selfie com iluminação diferente!");
+        showToast("Nenhuma foto certeira. Tente outra selfie com melhor iluminação.", "info");
         setPhotos([]);
       } else {
         // 3. Fetch Photo Details + Event Data
@@ -188,7 +190,7 @@ function MinhasFotosContent() {
       }
     } catch (err) {
       console.error(err);
-      alert("Erro ao processar busca facial.");
+      showToast("Erro ao processar busca facial.", "error");
     }
     setSearching(false);
   };
@@ -211,7 +213,7 @@ function MinhasFotosContent() {
       document.body.removeChild(link);
     } catch (err: unknown) {
       console.error("Download Error:", err);
-      alert(`❌ ${getErrorMessage(err)}`);
+      showToast(getErrorMessage(err), "error");
     }
   };
 
@@ -364,31 +366,7 @@ function MinhasFotosContent() {
         )}
       </main>
 
-      {toast && (
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          onAnimationComplete={() => setTimeout(() => setToast(null), 4000)}
-          style={{
-            position: 'fixed',
-            bottom: '2rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(16,185,129,0.95)',
-            color: '#fff',
-            padding: '1rem 1.5rem',
-            borderRadius: '12px',
-            fontWeight: 600,
-            fontSize: '0.95rem',
-            zIndex: 9999,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {toast}
-        </motion.div>
-      )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

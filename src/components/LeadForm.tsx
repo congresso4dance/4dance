@@ -14,6 +14,7 @@ interface LeadFormProps {
 
 export default function LeadForm({ onSuccess, eventSlug, isOpen }: LeadFormProps) {
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -23,6 +24,7 @@ export default function LeadForm({ onSuccess, eventSlug, isOpen }: LeadFormProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSubmitError(null);
 
     try {
       const supabase = createClient();
@@ -46,12 +48,7 @@ export default function LeadForm({ onSuccess, eventSlug, isOpen }: LeadFormProps
 
       onSuccess();
     } catch (err: any) {
-      console.error('DEBUG - Erro no salvamento de lead:', {
-        msg: err.message,
-        code: err.code,
-        hint: err.hint
-      });
-      alert('Ops! Não conseguimos conectar ao servidor 4Dance. Por favor, verifique sua conexão ou tente novamente.');
+      setSubmitError('Não conseguimos conectar ao servidor. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -130,9 +127,12 @@ export default function LeadForm({ onSuccess, eventSlug, isOpen }: LeadFormProps
                 className={styles.submitBtn}
                 disabled={loading}
               >
-                {loading ? (
-                  <motion.span 
-                    animate={{ opacity: [1, 0.5, 1] }} 
+                {submitError && (
+                <p style={{ color: '#ef4444', fontSize: '0.82rem', marginBottom: '0.75rem', textAlign: 'center' }}>{submitError}</p>
+              )}
+              {loading ? (
+                  <motion.span
+                    animate={{ opacity: [1, 0.5, 1] }}
                     transition={{ repeat: Infinity, duration: 1 }}
                   >
                     Liberando Acesso Emocional...

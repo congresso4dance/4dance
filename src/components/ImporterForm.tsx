@@ -15,13 +15,18 @@ export default function ImporterForm({ events }: { events: Event[] }) {
   const [urlsText, setUrlsText] = useState("");
   const [isIterating, setIsIterating] = useState(false);
   const [status, setStatus] = useState({ current: 0, total: 0, success: 0, error: 0 });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [importDone, setImportDone] = useState(false);
 
   const supabase = createClient();
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setImportDone(false);
+
     if (!selectedEventId || !urlsText.trim()) {
-      alert("Por favor, selecione um evento e insira as URLs.");
+      setFormError("Por favor, selecione um evento e insira as URLs.");
       return;
     }
 
@@ -31,7 +36,7 @@ export default function ImporterForm({ events }: { events: Event[] }) {
       .filter((url) => url.startsWith("http") && (url.includes("fbcdn") || url.includes("fbcontent") || url.includes("images") || url.includes("scontent")));
 
     if (urls.length === 0) {
-      alert("Nenhuma URL válida encontrada. Certifique-se de colar os links das imagens.");
+      setFormError("Nenhuma URL válida encontrada. Certifique-se de colar os links das imagens.");
       return;
     }
 
@@ -62,7 +67,7 @@ export default function ImporterForm({ events }: { events: Event[] }) {
 
     setIsIterating(false);
     setUrlsText("");
-    alert("Importação concluída!");
+    setImportDone(true);
   };
 
   return (
@@ -111,8 +116,11 @@ export default function ImporterForm({ events }: { events: Event[] }) {
         </div>
       )}
 
-      <button 
-        type="submit" 
+      {formError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>{formError}</p>}
+      {importDone && <p style={{ color: '#22c55e', fontSize: '0.85rem', marginBottom: '1rem' }}>✓ Importação concluída com sucesso!</p>}
+
+      <button
+        type="submit"
         className={styles.submitBtn}
         disabled={isIterating}
       >

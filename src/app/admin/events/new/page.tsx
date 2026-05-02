@@ -12,6 +12,8 @@ import styles from './new-event.module.css';
 
 import { Camera, Wallet } from 'lucide-react';
 import { useEffect } from 'react';
+import { useToast } from '@/hooks/useToast';
+import ToastContainer from '@/components/ToastContainer';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
@@ -39,6 +41,7 @@ export default function NewEventPage() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const router = useRouter();
+  const { toasts, showToast, removeToast } = useToast();
   const supabase = createClient();
 
   const { register, handleSubmit, formState: { errors } } = useForm<EventFormValues>({
@@ -79,7 +82,7 @@ export default function NewEventPage() {
 
   const onSubmit = async (data: any) => {
     if (files.length === 0) {
-      alert('Selecione pelo menos uma foto.');
+      showToast('Selecione pelo menos uma foto.', 'error');
       return;
     }
 
@@ -103,7 +106,7 @@ export default function NewEventPage() {
       .single();
 
     if (eventError) {
-      alert('Erro ao criar evento: ' + eventError.message);
+      showToast('Erro ao criar evento: ' + eventError.message, 'error');
       setUploading(false);
       return;
     }
@@ -156,12 +159,13 @@ export default function NewEventPage() {
     }
 
     setUploading(false);
-    alert('Evento criado com sucesso!');
-    router.push('/admin');
+    showToast('Evento criado com sucesso!', 'success');
+    setTimeout(() => router.push('/admin'), 1500);
   };
 
   return (
     <div className={styles.container}>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <h1 className={styles.title}>Criar Novo Evento</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
