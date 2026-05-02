@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
 import styles from './login.module.css';
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [error, setError] = useState<string | null>(
+    searchParams.get('error') === 'confirmation_failed'
+      ? 'O link de confirmação expirou ou é inválido. Tente fazer login mesmo assim ou solicite um novo link.'
+      : null
+  );
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -28,7 +32,14 @@ export default function LoginPage() {
     });
 
     if (authError) {
-      setError(authError.message);
+      const msg = authError.message.toLowerCase();
+      if (msg.includes('email not confirmed')) {
+        setError('Confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada (e spam).');
+      } else if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+        setError('E-mail ou senha incorretos. Verifique seus dados e tente novamente.');
+      } else {
+        setError('Não foi possível fazer login. Tente novamente.');
+      }
       setLoading(false);
       return;
     }
@@ -128,6 +139,12 @@ export default function LoginPage() {
         </form>
 
         <div className={styles.footer}>
+          <Link href="/redefinir-senha" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
+            Esqueci minha senha
+          </Link>
+        </div>
+
+        <div className={styles.footer}>
           Não tem uma conta? <Link href="/cadastro">Criar agora</Link>
         </div>
 
@@ -136,5 +153,13 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

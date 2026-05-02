@@ -3,16 +3,36 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Download, LayoutGrid, Sparkles, User, LogOut, Loader2, Calendar, Scissors } from 'lucide-react';
+import { ShoppingBag, Download, LayoutGrid, Sparkles, User, LogOut, Loader2, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './portal.module.css';
+import { signDisplayPhotos } from '@/app/actions/storage-actions';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+type Profile = {
+  full_name?: string | null;
+};
+
+type PurchasedPhoto = {
+  id: string;
+  full_res_url: string;
+  events?: {
+    title?: string | null;
+    is_paid?: boolean | null;
+  } | null;
+};
+
+type DownloadResponse = {
+  url?: string;
+  error?: string;
+};
 
 export default function MyOrdersPage() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [purchasedPhotos, setPurchasedPhotos] = useState<any[]>([]);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [purchasedPhotos, setPurchasedPhotos] = useState<PurchasedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   
@@ -38,11 +58,11 @@ export default function MyOrdersPage() {
       setProfile(userProfile);
 
       // 3. Load Completed Orders
-      const { data: orders, error: ordersError } = await supabase
+      const { data: orders } = await supabase
         .from('orders')
         .select('*')
         .eq('user_id', authUser.id)
-        .eq('status', 'completed');
+        .in('status', ['paid', 'completed']);
 
       if (orders && orders.length > 0) {
         // Flatten all photo IDs from all orders
@@ -55,22 +75,24 @@ export default function MyOrdersPage() {
             .select('*, events(title, is_paid)')
             .in('id', allPhotoIds);
           
-          setPurchasedPhotos(photosData || []);
+          const signed = await signDisplayPhotos((photosData || []) as unknown as PurchasedPhoto[]);
+          setPurchasedPhotos(signed as unknown as PurchasedPhoto[]);
         }
       }
       
       setLoading(false);
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDownload = async (photo: any) => {
+  const handleDownload = async (photo: PurchasedPhoto) => {
     setDownloading(photo.id);
     try {
       const response = await fetch(`${window.location.origin}/api/photos/get-download-url?photoId=${photo.id}`);
-      const data = await response.json();
+      const data = await response.json() as DownloadResponse;
 
-      if (!response.ok) throw new Error(data.error);
+      if (!response.ok || !data.url) throw new Error(data.error || 'Erro ao gerar link de download');
 
       // Create temporary link and trigger download
       const link = document.createElement('a');

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type MouseEvent } from 'react';
 import styles from '@/app/eventos/[slug]/gallery.module.css';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
-import { createClient } from '@/utils/supabase/client';
-import { Heart, Share2, Download, X, ChevronLeft, ChevronRight, Lock, Filter, Target, ShoppingBag, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { Heart, Share2, Download, X, ChevronLeft, ChevronRight, Target, ShoppingBag, ShoppingCart, CheckCircle2 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -14,8 +13,47 @@ import CheckoutModal from './CheckoutModal';
 import WatermarkGrid from './WatermarkGrid';
 import * as faceapi from 'face-api.js';
 
+type GalleryEvent = {
+  id: string;
+  title: string;
+  slug: string;
+  is_paid?: boolean;
+  photo_price?: number | null;
+  synced_photos?: number | null;
+  total_fb_photos?: number | null;
+};
+
+type GalleryPhoto = {
+  id: string;
+  thumbnail_url: string;
+  full_res_url: string;
+  isFiltered?: boolean;
+  [key: string]: unknown;
+};
+
+type DownloadResponse = {
+  url?: string;
+  error?: string;
+};
+
+type ParallaxPhotoProps = {
+  photo: GalleryPhoto;
+  index: number;
+  onSelect: () => void;
+  handleDownload: (photo: GalleryPhoto) => void;
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
+  onAddToCart: (photo: GalleryPhoto) => void;
+  isInCart: boolean;
+  isPaid?: boolean;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro inesperado";
+}
+
 // Componente para item de foto com Parallax Individual (Apple Elite)
-const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, isFavorite, onToggleFavorite, onAddToCart, isInCart, isPaid }: any) => {
+const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onToggleFavorite, onAddToCart, isInCart, isPaid }: ParallaxPhotoProps) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -62,7 +100,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
           <div className={styles.topActions}>
             <button 
               className={`${styles.iconBtn} ${isFavorite ? styles.favorited : ''}`}
-              onClick={(e) => {
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 onToggleFavorite(photo.id);
               }}
@@ -74,7 +112,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
             {isPaid ? (
               <button 
                 className={`${styles.cartBtn} ${isInCart ? styles.inCart : ''}`}
-                onClick={(e) => {
+                onClick={(e: MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   onAddToCart(photo);
                 }}
@@ -84,7 +122,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
             ) : (
               <button 
                 className={styles.cartBtn}
-                onClick={(e) => {
+                onClick={(e: MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   handleDownload(photo);
                 }}
@@ -94,7 +132,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
             )}
             <button 
               className={styles.downloadBtnMini}
-              onClick={(e) => {
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleDownload(photo);
               }}
@@ -109,12 +147,13 @@ const ParallaxPhoto = ({ photo, index, onSelect, onImageLoad, handleDownload, is
   );
 };
 
-export default function GalleryContent({ event, photos: initialPhotos }: { event: any, photos: any[] }) {
-  const [allPhotos, setAllPhotos] = useState<any[]>(initialPhotos);
+export default function GalleryContent({ event, photos: initialPhotos, totalPhotosCount = 0 }: { event: GalleryEvent, photos: GalleryPhoto[], totalPhotosCount?: number }) {
+  const [allPhotos, setAllPhotos] = useState<GalleryPhoto[]>(initialPhotos);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
-  const [filteredPhotos, setFilteredPhotos] = useState<any[] | null>(null);
+  const [filteredPhotos, setFilteredPhotos] = useState<GalleryPhoto[] | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isLeaded, setIsLeaded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -122,44 +161,47 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
   const [showCart, setShowCart] = useState(false);
   const [focalPoint, setFocalPoint] = useState({ x: 50, y: 50 });
   const [isZooming, setIsZooming] = useState(false);
-  const [isDetecting, setIsDetecting] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
   const [displayLimit, setDisplayLimit] = useState(48);
+  const photoPrice = event.photo_price || 15.00;
   
   let displayPhotos = (filteredPhotos ? filteredPhotos : allPhotos).slice(0, displayLimit);
   if (showOnlyFavorites) {
     displayPhotos = (filteredPhotos ? filteredPhotos : allPhotos)
-      .filter((p: any) => favorites.includes(p.id))
+      .filter((p) => favorites.includes(p.id))
       .slice(0, displayLimit);
   }
 
-  const isSyncing = event.synced_photos < event.total_fb_photos;
-  const syncProgress = event.total_fb_photos > 0 ? (event.synced_photos / event.total_fb_photos) * 100 : 0;
+  const syncedPhotos = event.synced_photos ?? 0;
+  const totalFacebookPhotos = event.total_fb_photos ?? 0;
+  const isSyncing = syncedPhotos < totalFacebookPhotos;
+  const syncProgress = totalFacebookPhotos > 0 ? (syncedPhotos / totalFacebookPhotos) * 100 : 0;
 
   // Infinite Scroll Trigger desativado para manter o layout Masonry "liso" sem saltos de colunas.
   // Todas as fotos são carregadas do lado do servidor (page.tsx) permitindo que o next/image realize Lazy Loading otimizado e fluido.
 
   useEffect(() => {
-    // Carregar leads e favoritos
-    const savedLead = localStorage.getItem('4dance_lead');
-    if (savedLead) setIsLeaded(true);
+    const timer = window.setTimeout(() => {
+      // Carregar leads e favoritos
+      const savedLead = localStorage.getItem('4dance_lead');
+      if (savedLead) setIsLeaded(true);
 
-    const savedFavs = localStorage.getItem(`4dance_favs_${event.id}`);
-    if (savedFavs) setFavorites(JSON.parse(savedFavs));
+      const savedFavs = localStorage.getItem(`4dance_favs_${event.id}`);
+      if (savedFavs) setFavorites(JSON.parse(savedFavs));
 
-    // Deep Linking: Abrir foto se houver ID na URL
-    const photoId = searchParams.get('photo');
-    if (photoId) {
-      const idx = allPhotos.findIndex(p => p.id === photoId);
-      if (idx !== -1) setSelectedIndex(idx);
-    }
+      // Deep Linking: Abrir foto se houver ID na URL
+      const photoId = searchParams.get('photo');
+      if (photoId) {
+        const idx = allPhotos.findIndex(p => p.id === photoId);
+        if (idx !== -1) setSelectedIndex(idx);
+      }
+    }, 0);
     
     // Keyboard navigation
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -170,15 +212,35 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex, allPhotos]);
   
   // INFINITE SCROLL
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && displayLimit < (filteredPhotos ? filteredPhotos.length : allPhotos.length)) {
+        if (!entries[0].isIntersecting) return;
+
+        const currentTotal = filteredPhotos ? filteredPhotos.length : allPhotos.length;
+
+        if (displayLimit < currentTotal) {
           setDisplayLimit(prev => prev + 24);
+        } else if (!filteredPhotos && allPhotos.length < totalPhotosCount && !isFetchingMore) {
+          setIsFetchingMore(true);
+          fetch(`/api/events/${event.id}/photos?offset=${allPhotos.length}&limit=200&is_paid=${event.is_paid ? 'true' : 'false'}`)
+            .then(r => r.json())
+            .then(({ photos: more }: { photos: GalleryPhoto[] }) => {
+              if (more?.length) {
+                setAllPhotos(prev => [...prev, ...more]);
+                setDisplayLimit(prev => prev + 24);
+              }
+            })
+            .catch(() => null)
+            .finally(() => setIsFetchingMore(false));
         }
       },
       { threshold: 0.1 }
@@ -186,7 +248,7 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
 
     if (loadMoreRef.current) observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [loadMoreRef, displayLimit, filteredPhotos, allPhotos]);
+  }, [loadMoreRef, displayLimit, filteredPhotos, allPhotos, totalPhotosCount, isFetchingMore, event.id, event.is_paid]);
 
   const toggleFavorite = (id: string) => {
     const newFavs = favorites.includes(id) 
@@ -197,7 +259,7 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
     localStorage.setItem(`4dance_favs_${event.id}`, JSON.stringify(newFavs));
   };
 
-  const handleShare = async (photo: any) => {
+  const handleShare = async (photo: GalleryPhoto) => {
     const shareUrl = `${window.location.origin}${pathname}?photo=${photo.id}`;
     
     if (navigator.share) {
@@ -207,8 +269,8 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
           text: 'Olha que foto incrível na 4Dance!',
           url: shareUrl,
         });
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
+      } catch (err: unknown) {
+        if (!(err instanceof DOMException) || err.name !== 'AbortError') {
           console.error("Erro ao compartilhar:", err);
         }
       }
@@ -232,7 +294,6 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
   };
 
   const detectFaceForZoom = async (url: string) => {
-    setIsDetecting(true);
     try {
       // Pequeno delay para a animação do Lightbox abrir primeiro
       await new Promise(r => setTimeout(r, 600));
@@ -250,22 +311,34 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
       }
     } catch (err) {
       console.warn("Cinema Flow detect error:", err);
-    } finally {
-      setIsDetecting(false);
     }
   };
 
-  const closeLightbox = () => {
+  function closeLightbox() {
     setSelectedIndex(null);
     router.push(pathname, { scroll: false });
-  };
+  }
 
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDownload = async (photo: any) => {
+  const handleAddPhotoToCart = async (photo: GalleryPhoto) => {
+    const alreadyInCart = isInCart(photo.id);
+
+    await addToCart({
+      id: photo.id,
+      url: photo.full_res_url,
+      price: photoPrice,
+      eventId: event.id,
+      eventTitle: event.title
+    });
+
+    showToast(alreadyInCart ? "Esta foto já está no carrinho." : "Foto adicionada ao carrinho!");
+  };
+
+  const handleDownload = async (photo: GalleryPhoto) => {
     if (!isLeaded && event.is_paid === false) {
       setShowLeadForm(true);
       return;
@@ -274,9 +347,9 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
     showToast("📸 Gerando seu link seguro de download...");
     try {
       const response = await fetch(`${window.location.origin}/api/photos/get-download-url?photoId=${photo.id}`);
-      const data = await response.json();
+      const data = await response.json() as DownloadResponse;
 
-      if (!response.ok) {
+      if (!response.ok || !data.url) {
         throw new Error(data.error || 'Erro ao obter link de download');
       }
 
@@ -292,17 +365,18 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
       document.body.removeChild(link);
       
       showToast("✅ Download iniciado com sucesso!");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       console.error("Download Error:", err);
-      showToast(`❌ ${err.message || "Erro ao baixar foto"}`);
+      showToast(`❌ ${message || "Erro ao baixar foto"}`);
       
-      if (err.message?.includes('comprada')) {
+      if (message.includes('comprada')) {
         setShowCart(true);
       }
     }
   };
 
-  const handleNext = () => {
+  function handleNext() {
     if (selectedIndex !== null && selectedIndex < displayPhotos.length - 1) {
       const nextIdx = selectedIndex + 1;
       setSelectedIndex(nextIdx);
@@ -310,9 +384,9 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
       params.set('photo', displayPhotos[nextIdx].id);
       window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     }
-  };
+  }
 
-  const handlePrev = () => {
+  function handlePrev() {
     if (selectedIndex !== null && selectedIndex > 0) {
       const prevIdx = selectedIndex - 1;
       setSelectedIndex(prevIdx);
@@ -320,11 +394,7 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
       params.set('photo', displayPhotos[prevIdx].id);
       window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     }
-  };
-
-  const handleImageLoad = (id: string) => {
-    // Mantido para compatibilidade se necessário, masImage do Next cuida disso
-  };
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -338,7 +408,11 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
     <>
       <div className={styles.searchBarRow}>
         <div style={{ width: '100%' }}>
-          <GallerySearch photos={allPhotos} eventId={event.id} onFilter={setFilteredPhotos} />
+          <GallerySearch
+            photos={allPhotos}
+            eventId={event.id}
+            onFilter={(nextPhotos) => setFilteredPhotos(nextPhotos as GalleryPhoto[] | null)}
+          />
           <p style={{ 
             fontSize: '0.8rem', 
             color: 'rgba(255,255,255,0.4)', 
@@ -401,15 +475,9 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
             onSelect={() => openLightbox(index)}
             handleDownload={handleDownload}
             isInCart={isInCart(photo.id)}
-            onAddToCart={(p: any) => {
-              addToCart({
-                id: p.id,
-                url: p.full_res_url,
-                price: event.photo_price || 15.00,
-                eventId: event.id,
-                eventTitle: event.title
-              });
-              showToast("✨ Foto adicionada ao carrinho!");
+            onAddToCart={(p: GalleryPhoto) => {
+              const photoIndex = displayPhotos.findIndex(item => item.id === p.id);
+              openLightbox(photoIndex >= 0 ? photoIndex : index);
             }}
             isPaid={event.is_paid}
           />
@@ -457,6 +525,29 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
                 <Download size={22} />
               </button>
             </div>
+
+            {event.is_paid && displayPhotos[selectedIndex] && (
+              <div className={styles.purchasePreviewPanel} onClick={(e) => e.stopPropagation()}>
+                <div>
+                  <span>Preview com marca d&apos;água</span>
+                  <strong>HD sem marca por R$ {photoPrice.toFixed(2)}</strong>
+                </div>
+                <button
+                  className={`${styles.previewBuyBtn} ${isInCart(displayPhotos[selectedIndex].id) ? styles.inCart : ''}`}
+                  onClick={() => handleAddPhotoToCart(displayPhotos[selectedIndex])}
+                >
+                  {isInCart(displayPhotos[selectedIndex].id) ? (
+                    <>
+                      <CheckCircle2 size={18} /> No carrinho
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag size={18} /> Adicionar ao carrinho
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             <button className={styles.closeBtn} onClick={closeLightbox}>
               <X size={24} />
@@ -523,7 +614,7 @@ export default function GalleryContent({ event, photos: initialPhotos }: { event
                 )}
 
               </motion.div>
-              {event.is_paid && <WatermarkGrid opacity={0.3} />}
+              {event.is_paid && <WatermarkGrid opacity={0.5} />}
               <div className={styles.photoCounter}>
                 <span>{selectedIndex + 1}</span> / {displayPhotos.length}
               </div>

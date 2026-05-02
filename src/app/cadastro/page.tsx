@@ -11,7 +11,8 @@ import { sendWelcomeEmail } from '@/app/actions/email-actions';
 
 function SignupForm() {
   const searchParams = useSearchParams();
-  const initialRole = searchParams.get('role') as any;
+  const roleParam = searchParams.get('role');
+  const initialRole = roleParam === 'PHOTOGRAPHER' || roleParam === 'PRODUCER' ? roleParam : 'CLIENT';
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,9 +42,8 @@ function SignupForm() {
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-        }
+        data: { full_name: fullName },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       }
     });
 

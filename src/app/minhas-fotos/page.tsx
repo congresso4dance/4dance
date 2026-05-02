@@ -1,31 +1,91 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Search, Sparkles, Download, ShoppingBag, LayoutGrid, Heart, User, LogOut, Loader2, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Camera, Search, Sparkles, Download, ShoppingBag, LayoutGrid, User, LogOut, Loader2, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as faceapi from 'face-api.js';
 import styles from './portal.module.css';
 import WatermarkGrid from '@/components/WatermarkGrid';
 import { useCart } from '@/hooks/useCart';
+import { signDisplayPhotos } from '@/app/actions/storage-actions';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export default function MinhasFotosPortal() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [photos, setPhotos] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+type Profile = {
+  full_name?: string | null;
+};
+
+type PhotoEvent = {
+  title?: string | null;
+  is_paid?: boolean | null;
+  photo_price?: number | null;
+};
+
+type PortalPhoto = {
+  id: string;
+  event_id: string;
+  full_res_url: string;
+  events?: PhotoEvent | null;
+};
+
+type MatchPhotoFaceResult = {
+  photo_id: string;
+};
+
+type PhotoFace = {
+  photo_id: string;
+  embedding: string;
+};
+
+type DownloadResponse = {
+  url?: string;
+  error?: string;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro ao baixar foto";
+}
+
+function MinhasFotosContent() {
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [allPhotos, setAllPhotos] = useState<PortalPhoto[]>([]);
+  const [photos, setPhotos] = useState<PortalPhoto[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 50;
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [referenceFace, setReferenceFace] = useState<any>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const { addToCart, isInCart } = useCart();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      setToast('🎉 Pagamento confirmado! Suas fotos em HD já estão disponíveis aqui.');
+      window.history.replaceState(null, '', '/minhas-fotos');
+    }
+  }, [searchParams]);
+
+  async function loadModels() {
+    const MODEL_URL = `${window.location.origin}/models`;
+    try {
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+      ]);
+      setModelsLoaded(true);
+    } catch (err) {
+      console.error("Erro ao carregar modelos:", err);
+    }
+  }
 
   useEffect(() => {
     async function init() {
@@ -51,21 +111,8 @@ export default function MinhasFotosPortal() {
       setLoading(false);
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function loadModels() {
-    const MODEL_URL = `${window.location.origin}/models`;
-    try {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
-      setModelsLoaded(true);
-    } catch (err) {
-      console.error("Erro ao carregar modelos:", err);
-    }
-  }
 
   const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,8 +135,8 @@ export default function MinhasFotosPortal() {
       const embeddingString = `[${Array.from(detection.descriptor).join(',')}]`;
       const { data: matchData, error: matchError } = await supabase.rpc('match_photo_faces', {
         query_embedding: embeddingString,
-        match_threshold: 0.8, // Mais permissivo para Recall global
-        match_count: 50,
+        match_threshold: 0.8,
+        match_count: 200,
         p_event_id: null
       });
 
@@ -103,7 +150,7 @@ export default function MinhasFotosPortal() {
       }
 
       // 2. Local refinement for precision (The one you loved)
-      const photoIds = matchData.map((m: any) => m.photo_id);
+      const photoIds = (matchData as MatchPhotoFaceResult[]).map((match) => match.photo_id);
       
       const { data: faceData } = await supabase
         .from('photo_faces')
@@ -114,7 +161,7 @@ export default function MinhasFotosPortal() {
       const matchedPhotoIds: string[] = [];
 
       if (faceData) {
-        faceData.forEach((face: any) => {
+        (faceData as PhotoFace[]).forEach((face) => {
           const desc = new Float32Array(JSON.parse(face.embedding));
           const match = faceMatcher.findBestMatch(desc);
           if (match.label !== 'unknown') {
@@ -133,7 +180,11 @@ export default function MinhasFotosPortal() {
           .select('*, events(title, is_paid, photo_price)')
           .in('id', matchedPhotoIds);
 
-        setPhotos(matchedPhotos || []);
+        const signed = await signDisplayPhotos((matchedPhotos || []) as unknown as PortalPhoto[]);
+        const all = signed as unknown as PortalPhoto[];
+        setAllPhotos(all);
+        setPhotos(all.slice(0, PAGE_SIZE));
+        setHasMore(all.length > PAGE_SIZE);
       }
     } catch (err) {
       console.error(err);
@@ -142,16 +193,12 @@ export default function MinhasFotosPortal() {
     setSearching(false);
   };
 
-  const showToast = (message: string) => {
-    alert(message); // Simplificado para o portal do cliente
-  };
-
-  const handleDownload = async (photo: any) => {
+  const handleDownload = async (photo: PortalPhoto) => {
     try {
       const response = await fetch(`${window.location.origin}/api/photos/get-download-url?photoId=${photo.id}`);
-      const data = await response.json();
+      const data = await response.json() as DownloadResponse;
 
-      if (!response.ok) {
+      if (!response.ok || !data.url) {
         throw new Error(data.error || 'Erro ao obter link de download');
       }
 
@@ -162,9 +209,9 @@ export default function MinhasFotosPortal() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Download Error:", err);
-      alert(`❌ ${err.message || "Erro ao baixar foto"}`);
+      alert(`❌ ${getErrorMessage(err)}`);
     }
   };
 
@@ -267,7 +314,7 @@ export default function MinhasFotosPortal() {
                             url: photo.full_res_url,
                             price: photo.events?.photo_price || 15,
                             eventId: photo.event_id,
-                            eventTitle: photo.events?.title
+                            eventTitle: photo.events?.title || 'Evento 4Dance'
                           })}
                         >
                           {isInCart(photo.id) ? <CheckCircle2 size={16} /> : <ShoppingBag size={16} />}
@@ -286,14 +333,20 @@ export default function MinhasFotosPortal() {
                 </div>
               </motion.div>
             ))}
-            {hasMore && photos.length >= 50 && (
+            {hasMore && (
               <div className={styles.paginationArea}>
-                <button 
-                  onClick={() => {/* Implement Load More Logic if needed */}} 
+                <button
+                  onClick={() => {
+                    setLoadingMore(true);
+                    const next = allPhotos.slice(0, photos.length + PAGE_SIZE);
+                    setPhotos(next);
+                    setHasMore(next.length < allPhotos.length);
+                    setLoadingMore(false);
+                  }}
                   className={styles.loadMoreBtn}
                   disabled={loadingMore}
                 >
-                  {loadingMore ? <Loader2 className="animate-spin" size={18} /> : 'Carregar mais fotos'}
+                  {loadingMore ? <Loader2 className="animate-spin" size={18} /> : `Carregar mais (${allPhotos.length - photos.length} restantes)`}
                 </button>
               </div>
             )}
@@ -310,6 +363,40 @@ export default function MinhasFotosPortal() {
           </div>
         )}
       </main>
+
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 40 }}
+          onAnimationComplete={() => setTimeout(() => setToast(null), 4000)}
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(16,185,129,0.95)',
+            color: '#fff',
+            padding: '1rem 1.5rem',
+            borderRadius: '12px',
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            zIndex: 9999,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {toast}
+        </motion.div>
+      )}
     </div>
+  );
+}
+
+export default function MinhasFotosPortal() {
+  return (
+    <Suspense>
+      <MinhasFotosContent />
+    </Suspense>
   );
 }
