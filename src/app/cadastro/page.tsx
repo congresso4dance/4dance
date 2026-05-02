@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, User, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import styles from '../login/login.module.css'; // Reusing and extending login styles
-import { sendWelcomeEmail } from '@/app/actions/email-actions';
+import { createSignupProfile } from '@/app/actions/signup-actions';
 
 function SignupForm() {
   const searchParams = useSearchParams();
@@ -55,25 +55,17 @@ function SignupForm() {
 
     if (authData.user) {
       // 2. Create Profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          { 
-            id: authData.user.id, 
-            full_name: fullName,
-            role: selectedRole
-          }
-        ]);
+      const profileResult = await createSignupProfile({
+        userId: authData.user.id,
+        email,
+        fullName,
+        role: selectedRole,
+      });
 
-      if (profileError) {
-        console.error("Erro ao criar perfil:", profileError);
-      }
-
-      // 3. Send Welcome Email
-      try {
-        await sendWelcomeEmail(email, fullName);
-      } catch (emailErr) {
-        console.error("Erro ao enviar e-mail:", emailErr);
+      if (!profileResult.success) {
+        setError(`Erro ao criar perfil: ${profileResult.error || 'desconhecido'}`);
+        setLoading(false);
+        return;
       }
 
       setSuccess(true);

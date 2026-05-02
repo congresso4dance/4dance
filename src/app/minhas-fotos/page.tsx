@@ -3,9 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
-import { Camera, Search, Sparkles, Download, ShoppingBag, LayoutGrid, User, LogOut, Loader2, CheckCircle2 } from 'lucide-react';
+import { Camera, Search, Sparkles, Download, ShoppingBag, Loader2, CheckCircle2 } from 'lucide-react';
+import ClientSidebar from '@/components/ClientSidebar';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as faceapi from 'face-api.js';
 import { useToast } from '@/hooks/useToast';
@@ -62,6 +62,7 @@ function MinhasFotosContent() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(false);
   const { addToCart, isInCart } = useCart();
   const { toasts, showToast, removeToast } = useToast();
   const router = useRouter();
@@ -77,6 +78,7 @@ function MinhasFotosContent() {
 
   async function loadModels() {
     const MODEL_URL = `${window.location.origin}/models`;
+    setModelsLoading(true);
     try {
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -86,6 +88,9 @@ function MinhasFotosContent() {
       setModelsLoaded(true);
     } catch (err) {
       console.error("Erro ao carregar modelos:", err);
+      showToast("A busca facial ainda não carregou. Atualize a página e tente novamente.", "error");
+    } finally {
+      setModelsLoading(false);
     }
   }
 
@@ -108,8 +113,8 @@ function MinhasFotosContent() {
       
       setProfile(profile);
 
-      // 3. Load Models
-      await loadModels();
+      // 3. Load face search models in the background so the portal opens immediately.
+      void loadModels();
       setLoading(false);
     }
     init();
@@ -118,7 +123,11 @@ function MinhasFotosContent() {
 
   const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !modelsLoaded) return;
+    if (!file) return;
+    if (!modelsLoaded) {
+      showToast(modelsLoading ? "A IA ainda está carregando. Tente novamente em alguns segundos." : "A busca facial ainda não está pronta. Atualize a página e tente novamente.", "info");
+      return;
+    }
 
     setSearching(true);
     try {
@@ -217,11 +226,6 @@ function MinhasFotosContent() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
-
   if (loading) {
     return (
       <div className={styles.loadingScreen}>
@@ -233,36 +237,7 @@ function MinhasFotosContent() {
 
   return (
     <div className={styles.portalContainer}>
-      <nav className={styles.sidebar}>
-        <div className={styles.navTop}>
-          <div className={styles.logo}>4DANCE <span>CLIENTE</span></div>
-          <div className={styles.userProfile}>
-            <div className={styles.avatar}>
-              <User size={24} />
-            </div>
-            <div className={styles.userInfo}>
-              <strong>{profile?.full_name || user?.email}</strong>
-              <span>Dançarino Enthusiast</span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.navLinks}>
-          <Link href="/minhas-fotos" className={styles.active}>
-            <LayoutGrid size={20} /> Minha Galeria
-          </Link>
-          <Link href="/eventos">
-            <Sparkles size={20} /> Descobrir Eventos
-          </Link>
-          <Link href="/meus-pedidos">
-            <ShoppingBag size={20} /> Minhas Compras
-          </Link>
-        </div>
-
-        <button onClick={handleLogout} className={styles.logoutBtn}>
-          <LogOut size={20} /> Sair
-        </button>
-      </nav>
+      <ClientSidebar profile={profile} userEmail={user?.email} />
 
       <main className={styles.mainContent}>
         <header className={styles.header}>

@@ -21,15 +21,20 @@ function ResetForm() {
   const supabase = createClient();
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      // Supabase redireciona com #access_token quando o link do e-mail é clicado
-      const hash = window.location.hash;
-      if (hash.includes('type=recovery')) {
+    // PKCE flow: Supabase fires PASSWORD_RECOVERY event after the callback exchanges the code
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
         setMode('update');
       }
-    }, 0);
+    });
 
-    return () => window.clearTimeout(timer);
+    // Legacy hash-based flow fallback
+    if (window.location.hash.includes('type=recovery')) {
+      setMode('update');
+    }
+
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRequest = async (e: React.FormEvent) => {
@@ -38,7 +43,7 @@ function ResetForm() {
     setError(null);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/redefinir-senha`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/redefinir-senha`,
     });
 
     if (error) {

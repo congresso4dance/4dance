@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Download, LayoutGrid, Sparkles, User, LogOut, Loader2, Calendar } from 'lucide-react';
+import { ShoppingBag, Download, Loader2, Calendar } from 'lucide-react';
+import ClientSidebar from '@/components/ClientSidebar';
 import { useToast } from '@/hooks/useToast';
 import ToastContainer from '@/components/ToastContainer';
 import Image from 'next/image';
@@ -111,11 +112,6 @@ export default function MyOrdersPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
-
   if (loading) {
     return (
       <div className={styles.loadingScreen}>
@@ -128,36 +124,7 @@ export default function MyOrdersPage() {
   return (
     <div className={styles.portalContainer}>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <nav className={styles.sidebar}>
-        <div className={styles.navTop}>
-          <div className={styles.logo}>4DANCE <span>CLIENTE</span></div>
-          <div className={styles.userProfile}>
-            <div className={styles.avatar}>
-              <User size={24} />
-            </div>
-            <div className={styles.userInfo}>
-              <strong>{profile?.full_name || user?.email}</strong>
-              <span>Dançarino Elite</span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.navLinks}>
-          <Link href="/minhas-fotos">
-            <LayoutGrid size={20} /> Minha Galeria
-          </Link>
-          <Link href="/eventos">
-            <Sparkles size={20} /> Descobrir Eventos
-          </Link>
-          <Link href="/meus-pedidos" className={styles.active}>
-            <ShoppingBag size={20} /> Minhas Compras
-          </Link>
-        </div>
-
-        <button onClick={handleLogout} className={styles.logoutBtn}>
-          <LogOut size={20} /> Sair
-        </button>
-      </nav>
+      <ClientSidebar profile={profile} userEmail={user?.email} />
 
       <main className={styles.mainContent}>
         <header className={styles.header}>

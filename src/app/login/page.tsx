@@ -54,7 +54,7 @@ function LoginForm() {
 
       if (profileError || !profile) {
         // Fallback for old users or missing profiles
-        window.location.href = '/admin';
+        window.location.href = '/minha-conta';
       } else {
         // Dynamic Redirect
         const adminRoles = ['owner', 'admin', 'editor', 'assistant'];
@@ -65,7 +65,7 @@ function LoginForm() {
         } else if (profile.role === 'PRODUCER') {
           window.location.href = '/portal-produtor';
         } else {
-          window.location.href = '/minhas-fotos';
+          window.location.href = '/minha-conta';
         }
       }
     }
