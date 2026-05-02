@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import styles from "./SocialProof.module.css";
 
-function TestimonialAvatar({ author, url }: { author: string, url?: string }) {
+function TestimonialAvatar({ author, url }: { author: string; url?: string | null }) {
   const [error, setError] = useState(false);
   const initials = author.charAt(0).toUpperCase();
   
   if (url && !error) {
     return (
       <div className={styles.avatarContainer}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src={url} 
           alt={author} 
@@ -31,9 +32,9 @@ function TestimonialAvatar({ author, url }: { author: string, url?: string }) {
 interface Testimonial {
   id: string;
   author: string;
-  role: string;
+  role: string | null;
   content: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
 }
 
 
@@ -42,6 +43,10 @@ interface SocialProofProps {
 }
 
 export default function SocialProof({ testimonials }: SocialProofProps) {
+  if (testimonials.length === 0) {
+    return null;
+  }
+
   const mid = Math.ceil(testimonials.length / 2);
   const row1 = testimonials.slice(0, mid);
   const row2 = testimonials.slice(mid);
@@ -49,7 +54,7 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
   const allTestimonials1 = row1.length > 0 ? [...row1, ...row1, ...row1] : [];
   const allTestimonials2 = row2.length > 0 ? [...row2, ...row2, ...row2] : [];
 
-  const marqueeVariantsLeft: any = {
+  const marqueeVariantsLeft: Variants = {
     animate: {
       x: [0, -2000],
       transition: {
@@ -63,7 +68,7 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
     },
   };
 
-  const marqueeVariantsRight: any = {
+  const marqueeVariantsRight: Variants = {
     animate: {
       x: [-2000, 0],
       transition: {
@@ -102,12 +107,12 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
           >
             {allTestimonials1.map((t, index) => (
               <div key={`${t.id}-${index}`} className={styles.testimonialCard}>
-                <p className={styles.content}>"{t.content}"</p>
+                <p className={styles.content}>&quot;{t.content}&quot;</p>
                 <div className={styles.author}>
                   <TestimonialAvatar author={t.author || ""} url={t.avatar_url} />
                   <div className={styles.info}>
                     <h4>{t.author}</h4>
-                    <span>{t.role}</span>
+                    {t.role && <span>{t.role}</span>}
                   </div>
                 </div>
               </div>
@@ -124,12 +129,12 @@ export default function SocialProof({ testimonials }: SocialProofProps) {
           >
             {allTestimonials2.map((t, index) => (
               <div key={`${t.id}-${index}`} className={styles.testimonialCard}>
-                <p className={styles.content}>"{t.content}"</p>
+                <p className={styles.content}>&quot;{t.content}&quot;</p>
                 <div className={styles.author}>
                   <TestimonialAvatar author={t.author || ""} url={t.avatar_url} />
                   <div className={styles.info}>
                     <h4>{t.author}</h4>
-                    <span>{t.role}</span>
+                    {t.role && <span>{t.role}</span>}
                   </div>
                 </div>
               </div>
