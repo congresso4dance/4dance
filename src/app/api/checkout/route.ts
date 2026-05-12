@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { calculateUnitPrice } from '@/utils/pricing';
+import { rateLimit, getClientIp } from '@/utils/rate-limit';
 
 let stripeInstance: Stripe | null = null;
 
@@ -16,6 +17,12 @@ function getStripe() {
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req)
+    const { success } = rateLimit(`checkout:${ip}`, 5, 60_000)
+    if (!success) {
+      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
+    }
+
     const stripe = getStripe();
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -54,7 +61,7 @@ export async function POST(req: Request) {
       .eq('id', eventId)
       .single();
 
-    let transferData = undefined;
+    let paymentIntentData: Stripe.Checkout.SessionCreateParams['payment_intent_data'] = {}
     if (event?.photographer_id) {
       const { data: photographer } = await supabase
         .from('profiles')
@@ -62,18 +69,17 @@ export async function POST(req: Request) {
         .eq('id', event.photographer_id)
         .single();
 
-      // Only split if the photographer has a connected account
       if (photographer?.stripe_account_id) {
-        // Platform keeps 'commission_rate', Photographer gets the rest
-        // Default commission is 10% if not set
         const commissionRate = event.commission_rate ?? 10;
         const photographerSharePercent = (100 - commissionRate) / 100;
         const amountForPhotographer = Math.round(finalAmount * photographerSharePercent * 100);
 
-        transferData = {
-          destination: photographer.stripe_account_id,
-          amount: amountForPhotographer,
-        };
+        paymentIntentData = {
+          transfer_data: {
+            destination: photographer.stripe_account_id,
+            amount: amountForPhotographer,
+          },
+        }
       }
     }
 
@@ -92,6 +98,7 @@ export async function POST(req: Request) {
         quantity: 1,
       })),
       mode: 'payment',
+      payment_intent_data: Object.keys(paymentIntentData).length ? paymentIntentData : undefined,
       success_url: `${req.headers.get('origin')}/minhas-fotos?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin')}/eventos?canceled=true`,
       metadata: {

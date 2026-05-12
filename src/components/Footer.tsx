@@ -118,10 +118,12 @@ export default function Footer() {
         </div>
         
         <div className={styles.bottom}>
-          <p>© {new Date().getFullYear()} 4Dance. Operando com Tecnologia 4D.</p>
+          <p>© {new Date().getFullYear()} 4Dance. Todos os direitos reservados.</p>
           <div className={styles.legal}>
             <Link href="/privacidade">Privacidade</Link>
             <Link href="/termos">Termos</Link>
+            <Link href="/cookies">Cookies</Link>
+            <Link href="/lgpd">LGPD</Link>
           </div>
         </div>
       </div>
