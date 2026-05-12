@@ -575,7 +575,7 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
                     alt="Ampliada" 
                     className={styles.lightboxImage}
                     fill
-                    unoptimized={true}
+                    sizes="(max-width: 1200px) 100vw, 1200px"
                     style={{ objectFit: 'contain' }}
                     priority
                     onContextMenu={(e) => e.preventDefault()}
