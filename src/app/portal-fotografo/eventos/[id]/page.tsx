@@ -5,7 +5,6 @@ import { createClient } from '@/utils/supabase/client';
 import styles from '../../fotografo.module.css';
 import { Camera, Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 
 export default function PhotographerEventDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,55 +36,34 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
     setUploading(true);
     setUploadStatus(`Preparando ${files.length} fotos...`);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     let successCount = 0;
     try {
-      const { applyWatermark } = await import('@/utils/watermark');
-
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setUploadStatus(`Processando ${i + 1}/${files.length}...`);
+        setUploadStatus(`Enviando ${i + 1}/${files.length}...`);
 
-        const fileExt = file.name.split('.').pop();
-        const baseName = `${Date.now()}-${Math.random()}`;
-        const fullPath = `${id}/full_${baseName}.${fileExt}`;
-        const thumbPath = `${id}/thumb_${baseName}.${fileExt}`;
+        const fd = new FormData();
+        fd.append('full', file);
+        fd.append('thumb', file);
+        fd.append('eventId', id);
 
-        // 1. Watermark
-        const wmBlob = await applyWatermark(file);
-        const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
+        const res = await fetch('/api/admin/upload-photo', {
+          method: 'POST',
+          body: fd
+        });
 
-        // 2. Upload High Res
-        const { error: fullError } = await supabase.storage
-          .from(PHOTO_STORAGE_BUCKET)
-          .upload(fullPath, file);
-
-        // 3. Upload Watermarked
-        const { error: thumbError } = await supabase.storage
-          .from(PHOTO_STORAGE_BUCKET)
-          .upload(thumbPath, wmFile);
-
-        if (!fullError && !thumbError) {
-          const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
-          const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
-
-          await supabase.from('photos').insert({
-            event_id: id,
-            full_res_url: fullUrl,
-            thumbnail_url: thumbUrl,
-            storage_path: fullPath,
-            photographer_id: user.id
-          });
+        if (res.ok) {
           successCount++;
         }
       }
       setUploadStatus(`Sucesso! ${successCount} fotos enviadas.`);
-      setTimeout(() => setUploadStatus(''), 3000);
+      setTimeout(() => {
+        setUploadStatus('');
+        router.refresh();
+      }, 3000);
     } catch (err) {
       console.error(err);
-      setUploadStatus('Erro no processamento das imagens.');
+      setUploadStatus('Erro no envio das imagens.');
     } finally {
       setUploading(false);
     }
@@ -131,7 +109,7 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
             </div>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Clique para enviar fotos</h3>
             <p style={{ fontSize: '0.85rem', opacity: 0.4, marginBottom: '2rem' }}>
-              Formatos aceitos: JPG, PNG. <br/>A marca d'água será aplicada automaticamente.
+              Formatos aceitos: JPG, PNG.
             </p>
             
             <input 
