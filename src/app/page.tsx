@@ -22,10 +22,28 @@ export default async function Home() {
 
   const events = rawEvents
     ? await Promise.all(
-        rawEvents.map(async (e) => ({
-          ...e,
-          cover_url: (await signSingleUrl(e.cover_url)) ?? e.cover_url,
-        }))
+        rawEvents.map(async (e) => {
+          let coverUrl = e.cover_url;
+
+          // 🔄 Fallback: Se não houver capa, pegar a primeira foto do evento
+          if (!coverUrl) {
+            const { data: firstPhoto } = await supabase
+              .from('photos')
+              .select('thumbnail_url')
+              .eq('event_id', e.id)
+              .limit(1)
+              .single();
+            
+            if (firstPhoto) {
+              coverUrl = firstPhoto.thumbnail_url;
+            }
+          }
+
+          return {
+            ...e,
+            cover_url: (await signSingleUrl(coverUrl)) ?? coverUrl,
+          };
+        })
       )
     : [];
   
