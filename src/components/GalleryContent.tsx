@@ -5,7 +5,7 @@ import styles from '@/app/eventos/[slug]/gallery.module.css';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Heart, Share2, Download, X, ChevronLeft, ChevronRight, Target, ShoppingBag, ShoppingCart, CheckCircle2 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
-import Image from 'next/image';
+// import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import LeadForm from './LeadForm';
 import GallerySearch from './GallerySearch';
@@ -63,16 +63,11 @@ const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onT
       transition={{ delay: index % 10 * 0.05 }}
     >
       <div className={styles.imageWrapper} onClick={onSelect}>
-        <Image 
+        <img 
           src={photo.thumbnail_url} 
           alt="Foto 4Dance" 
           className={styles.galleryImg}
-          fill
-          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
           loading={index < 8 ? "eager" : "lazy"}
-          priority={index < 8}
-          unoptimized
-          style={{ objectFit: 'cover' }}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
         />
@@ -569,38 +564,31 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
                     delay: 0.2
                   }}
                 >
-                  <Image 
-                    ref={imgRef}
+                  <img 
+                    ref={imgRef as any}
                     src={displayPhotos[selectedIndex].full_res_url || displayPhotos[selectedIndex].thumbnail_url} 
                     alt="Ampliada" 
                     className={styles.lightboxImage}
-                    fill
-                    sizes="(max-width: 1200px) 100vw, 1200px"
-                    style={{ objectFit: 'contain' }}
-                    priority
+                    style={{ objectFit: 'contain', width: '100%', height: '100%' }}
                     onContextMenu={(e) => e.preventDefault()}
                     onDragStart={(e) => e.preventDefault()}
                   />
                 </motion.div>
               )}
 
-                {/* --- PRELOAD INVISÍVEL (CARREGA A PRÓXIMA FOTO NO FUNDO) --- */}
+                {/* --- PRELOAD INVISÍVEL --- */}
                 {selectedIndex < displayPhotos.length - 1 && (
-                  <Image 
+                  <img 
                     src={displayPhotos[selectedIndex + 1].thumbnail_url} 
                     alt="Preload Next" 
-                    fill 
-                    unoptimized={true} 
-                    style={{ opacity: 0, pointerEvents: 'none' }} 
+                    style={{ display: 'none' }} 
                   />
                 )}
                 {selectedIndex > 0 && (
-                  <Image 
+                  <img 
                     src={displayPhotos[selectedIndex - 1].thumbnail_url} 
                     alt="Preload Prev" 
-                    fill 
-                    unoptimized={true} 
-                    style={{ opacity: 0, pointerEvents: 'none' }} 
+                    style={{ display: 'none' }} 
                   />
                 )}
 

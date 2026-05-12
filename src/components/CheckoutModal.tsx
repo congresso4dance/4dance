@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
+// import Image from 'next/image';
 import { X, ShoppingCart, ChevronRight, Image as ImageIcon, Trash2, ShieldCheck, QrCode, CreditCard } from 'lucide-react';
 import styles from '@/app/eventos/[slug]/gallery.module.css';
 
@@ -132,13 +132,10 @@ export default function CheckoutModal({ isOpen, onClose, items, total, savings, 
                         className={styles.cartItemThumb}
                         style={{ borderRadius: '12px', overflow: 'hidden', width: '60px', height: '60px' }}
                       >
-                        <Image
+                        <img 
                           src={item.url}
                           alt="Prévia"
-                          width={60}
-                          height={60}
-                          style={{ objectFit: 'cover' }}
-                          sizes="60px"
+                          style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                         />
                       </div>
                       <div className={styles.cartItemInfo} style={{ flex: 1, marginLeft: '1rem' }}>

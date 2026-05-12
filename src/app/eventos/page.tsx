@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { signSingleUrl } from '@/utils/storage-helper';
 import Navbar from '@/components/Navbar';
-import Image from 'next/image';
+// import Image from 'next/image';
 import Link from 'next/link';
 import styles from './eventos.module.css';
 
@@ -98,13 +98,10 @@ export default async function EventsListPage({
                 <Link key={event.id} href={`/eventos/${event.slug}`} className={styles.eventCard}>
                   <div className={styles.cardImage}>
                     {event.cover_url ? (
-                      <Image 
+                      <img 
                         src={event.cover_url} 
                         alt={event.title}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
-                        unoptimized
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     ) : (
                       <div className={styles.placeholder}>
