@@ -12,7 +12,6 @@ import styles from '../edit-event.module.css';
 import { signDisplayPhotos } from '@/app/actions/storage-actions';
 import { useToast } from '@/hooks/useToast';
 import ToastContainer from '@/components/ToastContainer';
-import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Título é obrigatório'),
@@ -172,9 +171,13 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const deletePhoto = async (photo: Photo) => {
     if (!confirm('Deseja realmente apagar esta foto?')) return;
 
-    await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove([photo.storage_path]);
+    await fetch('/api/admin/delete-photos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths: [photo.storage_path] }),
+    });
     await supabase.from('photos').delete().eq('id', photo.id);
-    
+
     await logAdminAction('DELETE_PHOTOS', { count: 1 }, id);
     setPhotos(photos.filter(p => p.id !== photo.id));
   };
@@ -187,10 +190,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     const selectedPhotos = photos.filter(p => selectedIds.has(p.id));
     const paths = selectedPhotos.map(p => p.storage_path);
 
-    // 1. Storage
-    await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove(paths);
-    
-    // 2. DB
+    await fetch('/api/admin/delete-photos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths }),
+    });
     await supabase.from('photos').delete().in('id', Array.from(selectedIds));
 
     await logAdminAction('DELETE_PHOTOS', { count }, id);
@@ -202,10 +206,14 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
   const deleteEvent = async () => {
     if (!confirm('ATENÇÃO: Isso apagará o evento e TODAS as fotos permanentemente. Prosseguir?')) return;
-    
+
     const paths = photos.map(p => p.storage_path);
     if (paths.length > 0) {
-      await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove(paths);
+      await fetch('/api/admin/delete-photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths }),
+      });
     }
 
     await logAdminAction('DELETE_EVENT', { photo_count: photos.length }, id);
@@ -325,42 +333,26 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 if (!files) return;
                 
                 showToast("🚀 Iniciando upload de " + files.length + " fotos...");
-                
+
                 let successCount = 0;
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
-                  const fileExt = file.name.split('.').pop();
-                  const baseName = `${Math.random()}`;
-                  const fullPath = `${id}/full_${baseName}.${fileExt}`;
-                  const thumbPath = `${id}/thumb_${baseName}.${fileExt}`;
-
                   try {
-                    // 1. Aplicar Marca d'água para a Thumbnail
                     const { applyWatermark } = await import('@/utils/watermark');
                     const wmBlob = await applyWatermark(file);
                     const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
 
-                    // 2. Upload da versão original (Limpa)
-                    const { error: fullError } = await supabase.storage
-                      .from(PHOTO_STORAGE_BUCKET)
-                      .upload(fullPath, file);
+                    const fd = new FormData();
+                    fd.append('full', file);
+                    fd.append('thumb', wmFile);
+                    fd.append('eventId', id);
 
-                    // 3. Upload da versão com marca d'água
-                    const { error: thumbError } = await supabase.storage
-                      .from(PHOTO_STORAGE_BUCKET)
-                      .upload(thumbPath, wmFile);
-
-                    if (!fullError && !thumbError) {
-                      const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
-                      const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
-
-                      await supabase.from('photos').insert({
-                        event_id: id,
-                        full_res_url: fullUrl,
-                        thumbnail_url: thumbUrl,
-                        storage_path: fullPath
-                      });
+                    const res = await fetch('/api/admin/upload-photo', { method: 'POST', body: fd });
+                    if (res.ok) {
                       successCount++;
+                    } else {
+                      const body = await res.json().catch(() => ({}));
+                      console.error("Erro no upload:", body.error || res.status);
                     }
                   } catch (err) {
                     console.error("Erro no upload/watermark:", err);
