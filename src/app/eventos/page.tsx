@@ -44,8 +44,9 @@ export default async function EventsListPage({
               .from('photos')
               .select('thumbnail_url')
               .eq('event_id', e.id)
+              .order('created_at', { ascending: true })
               .limit(1)
-              .single();
+              .maybeSingle();
             
             if (firstPhoto) {
               coverUrl = firstPhoto.thumbnail_url;
@@ -106,7 +107,9 @@ export default async function EventsListPage({
                         unoptimized
                       />
                     ) : (
-                      <div className={styles.placeholder} />
+                      <div className={styles.placeholder}>
+                        <span>4D</span>
+                      </div>
                     )}
                   </div>
                   <div className={styles.cardContent}>

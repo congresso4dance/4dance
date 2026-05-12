@@ -169,17 +169,17 @@
 }
 
 .masonry {
-  column-count: 3;
-  column-gap: 2rem;
-  padding: 0 1rem;
-  min-height: 100vh; /* Evita que o rodapé suba durante o carregamento */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding: 0;
+  min-height: 100vh;
 }
 
 .photoItem {
-  break-inside: avoid;
-  margin-bottom: 2rem;
   position: relative;
   transition: transform 0.4s var(--transition-smooth);
+  width: 100%;
 }
 
 .imageWrap.photoItem {
@@ -199,7 +199,7 @@
   border-radius: 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
-  aspect-ratio: auto;
+  aspect-ratio: 1 / 1;
 }
 
 /* Apple Shimmer Effect */
@@ -235,8 +235,9 @@
 
 .galleryImg {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
+  object-fit: cover;
   transition: transform 0.5s var(--transition-smooth), opacity 0.5s ease;
 }
 
@@ -404,13 +405,15 @@
 
 @media (max-width: 1024px) {
   .masonry {
-    column-count: 2;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
   }
 }
 
 @media (max-width: 600px) {
   .masonry {
-    column-count: 1;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
   }
 }
 
