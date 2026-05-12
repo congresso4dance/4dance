@@ -119,12 +119,16 @@ export default function NewEventPage() {
     let errors = 0;
     for (const file of files) {
       try {
+        const { compressImage } = await import('@/utils/compress-image');
         const { applyWatermark } = await import('@/utils/watermark');
-        const wmBlob = await applyWatermark(file);
+        
+        // Comprimir foto original para evitar erro 413
+        const compressed = await compressImage(file);
+        const wmBlob = await applyWatermark(compressed);
         const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
 
         const fd = new FormData();
-        fd.append('full', file);
+        fd.append('full', compressed);
         fd.append('thumb', wmFile);
         fd.append('eventId', event.id);
         if (data.photographer_id) fd.append('photographerId', data.photographer_id);

@@ -353,12 +353,16 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   try {
+                    const { compressImage } = await import('@/utils/compress-image');
                     const { applyWatermark } = await import('@/utils/watermark');
-                    const wmBlob = await applyWatermark(file);
+                    
+                    // Comprimir foto original para evitar erro 413
+                    const compressed = await compressImage(file);
+                    const wmBlob = await applyWatermark(compressed);
                     const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
 
                     const fd = new FormData();
-                    fd.append('full', file);
+                    fd.append('full', compressed);
                     fd.append('thumb', wmFile);
                     fd.append('eventId', id);
 
