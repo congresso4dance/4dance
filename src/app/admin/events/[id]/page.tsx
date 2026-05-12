@@ -47,6 +47,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [photographers, setPhotographers] = useState<Photographer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0, errors: 0 });
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { toasts, showToast, removeToast } = useToast();
@@ -321,20 +323,33 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       </form>
 
       <section className={styles.photoManagement}>
+        {isUploading && (
+          <div style={{ margin: '1rem 0', background: '#111', borderRadius: '8px', padding: '1rem' }}>
+            <p style={{ marginBottom: '8px', color: '#fff' }}>
+              Subindo fotos: {uploadProgress.done}/{uploadProgress.total}
+              {uploadProgress.errors > 0 && <span style={{ color: '#f87171' }}> ({uploadProgress.errors} erros)</span>}
+            </p>
+            <div style={{ background: '#333', borderRadius: '4px', height: '8px' }}>
+              <div style={{ background: 'var(--primary, #ceac66)', height: '8px', borderRadius: '4px', width: `${Math.round((uploadProgress.done / uploadProgress.total) * 100)}%`, transition: 'width 0.3s' }} />
+            </div>
+          </div>
+        )}
         <div className={styles.sectionHeader}>
           <h2>Gerenciar Fotos ({photos.length})</h2>
           <label className={styles.uploadBtn}>
-            <input 
-              type="file" 
-              multiple 
+            <input
+              type="file"
+              multiple
               accept="image/*" 
               onChange={async (e) => {
                 const files = e.target.files;
-                if (!files) return;
-                
-                showToast("🚀 Iniciando upload de " + files.length + " fotos...");
+                if (!files || files.length === 0) return;
+
+                setIsUploading(true);
+                setUploadProgress({ done: 0, total: files.length, errors: 0 });
 
                 let successCount = 0;
+                let errorCount = 0;
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   try {
@@ -353,14 +368,22 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     } else {
                       const body = await res.json().catch(() => ({}));
                       console.error("Erro no upload:", body.error || res.status);
+                      errorCount++;
                     }
                   } catch (err) {
                     console.error("Erro no upload/watermark:", err);
+                    errorCount++;
                   }
+                  setUploadProgress({ done: i + 1, total: files.length, errors: errorCount });
                 }
-                
+
+                setIsUploading(false);
                 if (successCount > 0) {
                   await logAdminAction('UPLOAD_PHOTOS', { count: successCount }, id);
+                  showToast(`✅ ${successCount} foto(s) salvas com sucesso!`, 'success');
+                }
+                if (errorCount > 0) {
+                  showToast(`❌ ${errorCount} foto(s) falharam. Veja o console.`, 'error');
                 }
                 router.refresh();
                 window.location.reload();
