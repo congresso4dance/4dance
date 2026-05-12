@@ -36,10 +36,27 @@ export default async function EventsListPage({
 
   const events = rawEvents
     ? await Promise.all(
-        rawEvents.map(async (e) => ({
-          ...e,
-          cover_url: (await signSingleUrl(e.cover_url)) ?? e.cover_url,
-        }))
+        rawEvents.map(async (e) => {
+          let coverUrl = e.cover_url;
+
+          if (!coverUrl) {
+            const { data: firstPhoto } = await supabase
+              .from('photos')
+              .select('thumbnail_url')
+              .eq('event_id', e.id)
+              .limit(1)
+              .single();
+            
+            if (firstPhoto) {
+              coverUrl = firstPhoto.thumbnail_url;
+            }
+          }
+
+          return {
+            ...e,
+            cover_url: (await signSingleUrl(coverUrl)) ?? coverUrl,
+          };
+        })
       )
     : [];
 
@@ -89,9 +106,7 @@ export default async function EventsListPage({
                         unoptimized
                       />
                     ) : (
-                      <div className={styles.placeholder}>
-                        <span>{new Date(event.event_date).getFullYear()}</span>
-                      </div>
+                      <div className={styles.placeholder} />
                     )}
                   </div>
                   <div className={styles.cardContent}>
