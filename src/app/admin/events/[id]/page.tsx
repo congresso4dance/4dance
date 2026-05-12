@@ -353,16 +353,13 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   try {
-                    // Comprimir + marca d'água no cliente antes de enviar
                     const { compressImage } = await import('@/utils/compress-image');
-                    const { applyWatermark } = await import('@/utils/watermark');
                     const compressed = await compressImage(file);
-                    const wmBlob = await applyWatermark(compressed);
-                    const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
+                    const thumbFile = new File([compressed], `thumb_${file.name}`, { type: 'image/jpeg' });
 
                     const fd = new FormData();
                     fd.append('full', compressed);
-                    fd.append('thumb', wmFile);
+                    fd.append('thumb', thumbFile);
                     fd.append('eventId', id);
 
                     const res = await fetch('/api/admin/upload-photo', { method: 'POST', body: fd });
