@@ -67,13 +67,20 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
     return () => window.clearTimeout(timer);
   }, [loadModels]);
 
+  // Revogar URLs ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsScanning(true);
-    
-    // Create preview
+
     const url = URL.createObjectURL(file);
     setPreviewUrls(prev => [...prev, url]);
     setReferenceImages(prev => [...prev, file]);
@@ -241,6 +248,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
   };
 
   const clearFilter = () => {
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
     setReferenceDescriptors([]);
     setReferenceImages([]);
     setPreviewUrls([]);
@@ -329,6 +337,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
                 <img src={url} alt="Face" className={styles.faceThumb} />
                 {referenceDescriptors.length > 1 && (
                   <button className={styles.removeFace} onClick={() => {
+                    URL.revokeObjectURL(previewUrls[i]);
                     const newDescs = [...referenceDescriptors];
                     const newImages = [...referenceImages];
                     const newUrls = [...previewUrls];

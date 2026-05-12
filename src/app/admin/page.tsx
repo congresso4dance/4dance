@@ -12,7 +12,8 @@ export default async function AdminDashboard() {
   const { data: events } = await supabase
     .from('events')
     .select('*')
-    .order('event_date', { ascending: false });
+    .order('event_date', { ascending: false })
+    .limit(100);
 
   // 2. Fetch Total Photos Count
   const { count: photosCount } = await supabase
@@ -51,7 +52,8 @@ export default async function AdminDashboard() {
   const { data: allLeads } = await supabase
     .from('leads')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(5000);
 
   return (
     <div className={styles.container}>

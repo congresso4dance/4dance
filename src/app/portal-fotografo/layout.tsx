@@ -39,11 +39,9 @@ export default function PhotographerLayout({ children }: { children: React.React
         .eq('id', user.id)
         .single();
 
-      if (!profile || (profile.role !== 'PHOTOGRAPHER' && profile.role !== 'ADMIN')) {
-        console.warn("Acesso negado: Usuário não é fotógrafo", profile?.role);
-        // Temporariamente desativado redirect para diagnosticar 404
-        // router.push('/');
-        setLoading(false);
+      const role = profile?.role?.toLowerCase();
+      if (!profile || !['photographer', 'admin', 'owner'].includes(role || '')) {
+        router.push('/');
         return;
       }
 
@@ -82,7 +80,14 @@ export default function PhotographerLayout({ children }: { children: React.React
             <p className={styles.userRole}>Plano Pro • Taxa: {profile?.custom_rate ? `${profile.custom_rate}%` : '10%'}</p>
           </div>
         </div>
-        <button className={styles.upgradeBtn}>Fazer upgrade</button>
+        <a
+          href="https://wa.me/55?text=Ol%C3%A1%2C+quero+fazer+upgrade+do+meu+plano+no+4Dance!"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.upgradeBtn}
+        >
+          Fazer upgrade
+        </a>
       </header>
 
       <main className={styles.mainContent}>
