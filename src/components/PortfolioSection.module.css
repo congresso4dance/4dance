@@ -35,24 +35,19 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 2rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
 }
 
 .portfolioItem {
   position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 12px;
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   transition: var(--transition-smooth);
-  cursor: pointer;
-}
-
-/* Specific layout for a creative grid */
-.portfolioItem:nth-child(n) { 
-  grid-column: span 4; 
-  aspect-ratio: 1 / 1;
 }
 
 .imageWrapper {
@@ -166,15 +161,13 @@
 }
 
 @media (max-width: 1024px) {
-  .portfolioItem:nth-child(n) {
-    grid-column: span 6;
-    aspect-ratio: 1 / 1;
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 640px) {
-  .portfolioItem:nth-child(n) {
-    grid-column: span 12;
-    aspect-ratio: 1 / 1;
+  .grid {
+    grid-template-columns: 1fr;
   }
 }
