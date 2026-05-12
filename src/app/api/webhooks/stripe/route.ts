@@ -27,15 +27,24 @@ function getResend() {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(req: Request) {
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET não configurado');
+    return NextResponse.json({ error: 'Configuração inválida' }, { status: 500 });
+  }
+
   const stripe = getStripe();
   const resend = getResend();
   const body = await req.text();
-  const signature = (await headers()).get('stripe-signature') as string;
+  const signature = (await headers()).get('stripe-signature');
+
+  if (!signature) {
+    return NextResponse.json({ error: 'Assinatura ausente' }, { status: 400 });
+  }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret!);
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err: any) {
     console.error(`Webhook signature verification failed: ${err.message}`);
     return NextResponse.json({ error: 'Assinatura inválida' }, { status: 400 });

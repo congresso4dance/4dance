@@ -17,7 +17,7 @@ function generateCSP() {
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' ws: wss: https://*.supabase.co https://*.stripe.com https://api.google.com https://www.google-analytics.com https://region1.google-analytics.com;
+    connect-src 'self' ws: wss: https://*.supabase.co https://*.stripe.com https://api.google.com https://www.google-analytics.com https://region1.google-analytics.com https://justadudewhohacks.github.io;
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim()
 
@@ -30,8 +30,15 @@ const rateLimitMap = new Map<string, { count: number; lastReset: number }>()
 
 function isRateLimited(ip: string) {
   const now = Date.now()
-  const windowMs = 60 * 1000 // 1 minuto
-  const maxRequests = 100 // Limite por IP
+  const windowMs = 60 * 1000
+  const maxRequests = 100
+
+  // Limpar entradas expiradas para evitar crescimento infinito
+  if (rateLimitMap.size > 5000) {
+    for (const [key, record] of rateLimitMap.entries()) {
+      if (now - record.lastReset > windowMs * 2) rateLimitMap.delete(key)
+    }
+  }
 
   const record = rateLimitMap.get(ip) || { count: 0, lastReset: now }
 
@@ -173,9 +180,9 @@ export default async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = (profile?.role || 'user').toUpperCase()
+    const role = (profile?.role || 'user').toLowerCase()
 
-    const allowedRoles = ['PHOTOGRAPHER', 'OWNER', 'ADMIN', 'EDITOR']
+    const allowedRoles = ['photographer', 'owner', 'admin', 'editor']
     if (!allowedRoles.includes(role)) {
       return NextResponse.redirect(new URL('/', request.url))
     }
@@ -199,9 +206,9 @@ export default async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = (profile?.role || 'user').toUpperCase()
+    const role = (profile?.role || 'user').toLowerCase()
 
-    const allowedRoles = ['PRODUCER', 'OWNER', 'ADMIN']
+    const allowedRoles = ['producer', 'owner', 'admin']
     if (!allowedRoles.includes(role)) {
       return NextResponse.redirect(new URL('/', request.url))
     }

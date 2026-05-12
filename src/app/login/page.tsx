@@ -58,12 +58,13 @@ function LoginForm() {
         window.location.href = '/admin';
       } else {
         // Dynamic Redirect
+        const role = profile.role.toLowerCase();
         const adminRoles = ['owner', 'admin', 'editor', 'assistant'];
-        if (adminRoles.includes(profile.role.toLowerCase())) {
+        if (adminRoles.includes(role)) {
           window.location.href = '/admin';
-        } else if (profile.role === 'PHOTOGRAPHER') {
+        } else if (role === 'photographer') {
           window.location.href = '/portal-fotografo';
-        } else if (profile.role === 'PRODUCER') {
+        } else if (role === 'producer') {
           window.location.href = '/portal-produtor';
         } else {
           window.location.href = '/minha-conta';
