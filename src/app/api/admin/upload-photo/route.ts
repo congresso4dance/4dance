@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { data: profile } = await supabaseUser
-    .from('user_profiles')
+    .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
