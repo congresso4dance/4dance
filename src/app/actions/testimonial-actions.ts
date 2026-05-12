@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { logAdminAction } from "@/utils/audit";
 
 const ADMIN_ROLES = ["owner", "admin", "editor", "assistant"];
 
@@ -57,6 +58,8 @@ export async function createTestimonial(formData: FormData) {
     redirect(`/admin/testimonials?status=error&message=${encodeURIComponent(error.message)}`);
   }
 
+  await logAdminAction('CREATE_TESTIMONIAL', { author, role });
+
   revalidatePath("/");
   revalidatePath("/admin/testimonials");
   redirect("/admin/testimonials?status=created");
@@ -75,6 +78,8 @@ export async function deleteTestimonial(formData: FormData) {
   if (error) {
     redirect(`/admin/testimonials?status=error&message=${encodeURIComponent(error.message)}`);
   }
+
+  await logAdminAction('DELETE_TESTIMONIAL', { id });
 
   revalidatePath("/");
   revalidatePath("/admin/testimonials");

@@ -99,22 +99,35 @@ export async function signPhotoUrls<T extends { id: string; thumbnail_url?: stri
 
 /**
  * Sign a single URL (e.g. for cover_url)
+ * Robustly handles full Supabase URLs or raw storage paths.
  */
-export async function signSingleUrl(publicUrl: string | null | undefined, expiresIn = 21600): Promise<string | null> {
-  if (!publicUrl) return null;
+export async function signSingleUrl(input: string | null | undefined, expiresIn = 21600): Promise<string | null> {
+  if (!input) return null;
   
-  const info = extractStorageInfo(publicUrl);
-  if (!info) return publicUrl; // Not a storage URL or already signed/external
-
+  const info = extractStorageInfo(input);
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.storage
-    .from(info.bucket)
-    .createSignedUrl(info.path, expiresIn);
 
-  if (error || !data) {
-    console.error('Error signing single URL:', error);
-    return publicUrl;
+  // If it's a full Supabase URL, sign it
+  if (info) {
+    const { data, error } = await supabase.storage
+      .from(info.bucket)
+      .createSignedUrl(info.path, expiresIn);
+
+    if (!error && data) return data.signedUrl;
+    console.error('Error signing Supabase URL:', error);
+    return input;
   }
 
-  return data.signedUrl;
+  // If it's not a URL, maybe it's a raw path. Try signing it in default buckets.
+  // We try 'photos' first, then 'event-photos'
+  const buckets = ['photos', 'event-photos'];
+  for (const bucket of buckets) {
+    const { data } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(input, expiresIn);
+    
+    if (data?.signedUrl) return data.signedUrl;
+  }
+
+  return input; // Return as is (might be external URL like FB/Google)
 }

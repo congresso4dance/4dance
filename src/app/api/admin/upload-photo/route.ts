@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { getSupabaseAdmin } from '@/utils/storage-helper';
 import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
+import { logAdminAction } from '@/utils/audit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -74,6 +75,13 @@ export async function POST(req: Request) {
   if (dbError) {
     return NextResponse.json({ error: `DB: ${dbError.message}` }, { status: 500 });
   }
+
+  // 📝 Gravar log de auditoria
+  await logAdminAction('UPLOAD_PHOTO', {
+    eventId,
+    fileName: fullFile.name,
+    storagePath: fullPath
+  });
 
   return NextResponse.json({ ok: true });
 }

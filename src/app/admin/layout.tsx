@@ -40,9 +40,18 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single();
 
-  const role = profile?.role || 'user';
+  const role = (profile?.role || 'user').toLowerCase();
+  const adminRoles = ['owner', 'admin', 'editor', 'assistant'];
+  const isAdmin = adminRoles.includes(role);
+  
+  if (!isAdmin) {
+    if (role === 'photographer') redirect('/portal-fotografo');
+    if (role === 'producer') redirect('/portal-produtor');
+    redirect('/minha-conta');
+  }
+
   const isOwner = role === 'owner';
-  const isAdmin = role === 'owner' || role === 'admin';
+
   const isEditor = isAdmin || role === 'editor';
 
   return (

@@ -1,12 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import styles from "./PortfolioSection.module.css";
 
 interface PortfolioEvent {
   id: string;
   cover_url?: string;
   title: string;
+  slug?: string;
 }
 
 interface PortfolioSectionProps {
@@ -14,6 +16,7 @@ interface PortfolioSectionProps {
 }
 
 export default function PortfolioSection({ events }: PortfolioSectionProps) {
+  // ... (keep variants)
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -68,18 +71,26 @@ export default function PortfolioSection({ events }: PortfolioSectionProps) {
               className={styles.portfolioItem}
               variants={itemVariants}
             >
-              {event.cover_url && (
+              <Link href={`/eventos/${event.slug || event.id}`} className={styles.link}>
                 <div className={styles.imageWrapper}>
-                  <img 
-                    src={event.cover_url} 
-                    alt={event.title} 
-                    className={styles.image} 
-                  />
+                  {event.cover_url ? (
+                    <img 
+                      src={event.cover_url} 
+                      alt={event.title} 
+                      className={styles.image} 
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={styles.placeholder}>
+                      <span>4D</span>
+                    </div>
+                  )}
                   <div className={styles.overlay}>
                     <h3>{event.title}</h3>
+                    <span className={styles.viewMore}>Ver Galeria</span>
                   </div>
                 </div>
-              )}
+              </Link>
             </motion.div>
           ))}
         </motion.div>
