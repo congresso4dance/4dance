@@ -38,7 +38,7 @@ interface Photographer {
   full_name: string;
 }
 
-import { Trash2, CheckCircle2, X, Wallet, Camera } from 'lucide-react';
+import { Trash2, X, Wallet, Camera } from 'lucide-react';
 import { logAdminAction } from '@/utils/admin-logger';
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -367,7 +367,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                       successCount++;
                     } else {
                       const body = await res.json().catch(() => ({}));
-                      console.error("Erro no upload:", body.error || res.status);
+                      const msg = body.error || `HTTP ${res.status}`;
+                      console.error("Erro no upload:", msg);
+                      if (errorCount === 0) showToast(`Erro: ${msg}`, 'error');
                       errorCount++;
                     }
                   } catch (err) {
