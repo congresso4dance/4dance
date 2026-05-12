@@ -68,6 +68,21 @@ function SignupForm() {
         return;
       }
 
+      // 3. Send Premium Welcome Email
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            type: 'welcome',
+            username: fullName.split(' ')[0],
+          }),
+        });
+      } catch (err) {
+        console.error('Erro ao enviar e-mail de boas-vindas:', err);
+      }
+
       setSuccess(true);
       setLoading(false);
       setTimeout(() => router.push('/login'), 5000);

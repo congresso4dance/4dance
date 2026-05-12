@@ -12,6 +12,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [honeypot, setHoneypot] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     searchParams.get('error') === 'confirmation_failed'
@@ -22,6 +23,13 @@ function LoginForm() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 🛡️ Bloqueio de Bot
+    if (honeypot) {
+      console.log('Bot detected');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -95,6 +103,18 @@ function LoginForm() {
         </div>
 
         <form onSubmit={handleLogin} className={styles.form}>
+          {/* 🛡️ Honeypot Antispam */}
+          <div style={{ display: 'none' }}>
+            <input 
+              type="text" 
+              name="honeypot" 
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1} 
+              autoComplete="off" 
+            />
+          </div>
+
           <div className={styles.inputGroup}>
             <label htmlFor="email"><Mail size={16} /> Email</label>
             <input 
