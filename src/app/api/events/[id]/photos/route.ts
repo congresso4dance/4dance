@@ -1,6 +1,5 @@
-import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-import { signPhotoUrls } from '@/utils/storage-helper';
+import { signPhotoUrls, getSupabaseAdmin } from '@/utils/storage-helper';
 
 type RawPhoto = {
   id: string;
@@ -18,7 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const limit = Math.min(300, Math.max(1, parseInt(searchParams.get('limit') || '200')));
   const isPaid = searchParams.get('is_paid') === 'true';
 
-  const supabase = await createClient();
+  const supabase = getSupabaseAdmin();
   const photoFields = isPaid ? 'id,event_id,thumbnail_url,storage_path,created_at' : '*';
 
   const { data: rawPhotos } = await supabase

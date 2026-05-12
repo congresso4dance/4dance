@@ -6,7 +6,7 @@ import styles from './gallery.module.css';
 import { Metadata } from 'next';
 import Image from 'next/image';
 import GalleryContent from '@/components/GalleryContent';
-import { signPhotoUrls, signSingleUrl } from '@/utils/storage-helper';
+import { signPhotoUrls, signSingleUrl, getSupabaseAdmin } from '@/utils/storage-helper';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -73,13 +73,13 @@ export default async function EventGalleryPage({ params }: Props) {
   const signedCoverUrl = await signSingleUrl(event.cover_url);
   const eventWithSignedCover = { ...event, cover_url: signedCoverUrl };
 
-  // 2. Fetch All Photos
-  // Para eventos pagos, não expor full_res_url ao client — downloads passam pela API segura.
+  // 2. Fetch All Photos — usa service role para contornar RLS em galeria pública
   const photoFields = event.is_paid
     ? 'id,event_id,thumbnail_url,storage_path,created_at'
     : '*';
 
-  const { data: rawPhotos, count: totalPhotosCount, error: photosError } = await supabase
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: rawPhotos, count: totalPhotosCount, error: photosError } = await supabaseAdmin
     .from('photos')
     .select(photoFields, { count: 'exact' })
     .eq('event_id', event.id)
