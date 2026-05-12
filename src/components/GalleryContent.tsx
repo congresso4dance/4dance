@@ -84,7 +84,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onT
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
         />
-        {isPaid && <WatermarkGrid />}
+        {/* Marca d'água removida das miniaturas para ficar mais limpo. Aparece apenas no Lightbox em eventos pagos. */}
         <div className={styles.overlay}>
           {photo.isFiltered && (
             <div className={styles.iaBadges}>

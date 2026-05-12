@@ -81,9 +81,7 @@ export default function PortfolioSection({ events }: PortfolioSectionProps) {
                       loading="lazy"
                     />
                   ) : (
-                    <div className={styles.placeholder}>
-                      <span>4D</span>
-                    </div>
+                    <div className={styles.placeholder} />
                   )}
                   <div className={styles.overlay}>
                     <h3>{event.title}</h3>
