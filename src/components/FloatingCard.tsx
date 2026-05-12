@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, MotionValue } from "framer-motion";
 import { useRef } from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import styles from "./Hero.module.css";
 
 interface FloatingCardProps {
@@ -61,13 +61,11 @@ export default function FloatingCard({
       }}
     >
       <div className={styles.cardInner}>
-        <Image 
+        <img 
           src={src} 
           alt="4Dance Moment" 
-          fill
-          sizes="(max-width: 768px) 150px, 300px"
           className={styles.heroImg}
-          unoptimized={src.includes('.gif') || src.includes('supabase')}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
         <div className={styles.cardOverlay} />
       </div>

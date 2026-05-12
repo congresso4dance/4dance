@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import styles from './gallery.module.css';
 import { Metadata } from 'next';
-import Image from 'next/image';
+// import Image from 'next/image';
 import GalleryContent from '@/components/GalleryContent';
 import { signPhotoUrls, signSingleUrl, getSupabaseAdmin } from '@/utils/storage-helper';
 
@@ -114,13 +114,11 @@ export default async function EventGalleryPage({ params }: Props) {
       <header className={styles.heroSection}>
         {eventWithSignedCover.cover_url && (
           <div className={styles.heroBg}>
-            <Image 
+            <img 
               src={eventWithSignedCover.cover_url} 
               alt={eventWithSignedCover.title} 
-              fill 
-              priority 
-              style={{ objectFit: 'cover' }}
               className={styles.blurImg}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
             <div className={styles.heroOverlay} />
           </div>
