@@ -353,50 +353,27 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   try {
-                    const fileExt = file.name.split('.').pop() || 'jpg';
-
-                    // 1. Obter URLs assinadas de upload direto
-                    const signRes = await fetch('/api/admin/upload-photo', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ eventId: id, fullExt: fileExt, thumbExt: 'jpg' }),
-                    });
-                    if (!signRes.ok) {
-                      const b = await signRes.json().catch(() => ({}));
-                      const msg = b.error || `HTTP ${signRes.status}`;
-                      if (errorCount === 0) showToast(`Erro: ${msg}`, 'error');
-                      errorCount++;
-                      setUploadProgress({ done: i + 1, total: files.length, errors: errorCount });
-                      continue;
-                    }
-                    const { fullUploadUrl, thumbUploadUrl, fullUrl, thumbUrl, fullPath } = await signRes.json();
-
-                    // 2. Comprimir original + aplicar marca d'água na thumbnail
+                    // Comprimir + marca d'água no cliente antes de enviar
                     const { compressImage } = await import('@/utils/compress-image');
                     const { applyWatermark } = await import('@/utils/watermark');
                     const compressed = await compressImage(file);
                     const wmBlob = await applyWatermark(compressed);
+                    const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
 
-                    // 3. Upload direto ao Supabase (sem passar pelo servidor)
-                    const [r1, r2] = await Promise.all([
-                      fetch(fullUploadUrl, { method: 'PUT', body: compressed, headers: { 'Content-Type': 'image/jpeg' } }),
-                      fetch(thumbUploadUrl, { method: 'PUT', body: wmBlob, headers: { 'Content-Type': 'image/jpeg' } }),
-                    ]);
+                    const fd = new FormData();
+                    fd.append('full', compressed);
+                    fd.append('thumb', wmFile);
+                    fd.append('eventId', id);
 
-                    if (!r1.ok || !r2.ok) {
+                    const res = await fetch('/api/admin/upload-photo', { method: 'POST', body: fd });
+                    if (res.ok) {
+                      successCount++;
+                    } else {
+                      const b = await res.json().catch(() => ({}));
+                      const msg = b.error || `HTTP ${res.status}`;
+                      if (errorCount === 0) showToast(`Erro: ${msg}`, 'error');
                       errorCount++;
-                      setUploadProgress({ done: i + 1, total: files.length, errors: errorCount });
-                      continue;
                     }
-
-                    // 4. Registrar no banco de dados
-                    await fetch('/api/admin/upload-photo/confirm', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ eventId: id, fullUrl, thumbUrl, fullPath }),
-                    });
-
-                    successCount++;
                   } catch (err) {
                     console.error("Erro no upload:", err);
                     errorCount++;
