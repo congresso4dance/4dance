@@ -47,12 +47,13 @@ export async function signPhotoUrls<T extends { id: string; thumbnail_url?: stri
   // Identify all URLs that need signing
   photos.forEach(p => {
     const thumbInfo = extractStorageInfo(p.thumbnail_url);
-    if (thumbInfo) {
+    // Se o bucket for 'photos', ele é público, não precisa assinar
+    if (thumbInfo && thumbInfo.bucket !== 'photos') {
       photosToSign.push({ id: p.id, field: 'thumbnail_url', ...thumbInfo });
     }
 
     const fullInfo = extractStorageInfo(p.full_res_url);
-    if (fullInfo) {
+    if (fullInfo && fullInfo.bucket !== 'photos') {
       photosToSign.push({ id: p.id, field: 'full_res_url', ...fullInfo });
     }
   });
@@ -71,17 +72,30 @@ export async function signPhotoUrls<T extends { id: string; thumbnail_url?: stri
 
   for (const bucket in byBucket) {
     const items = byBucket[bucket];
-    const paths = items.map(i => i.path);
-
+    // Pegar caminhos únicos para evitar que o Supabase retorne menos URLs que o esperado
+    const uniquePaths = Array.from(new Set(items.map(i => i.path)));
+    
     const { data, error } = await supabase.storage
       .from(bucket)
-      .createSignedUrls(paths, expiresIn);
+      .createSignedUrls(uniquePaths, expiresIn);
 
     if (!error && data) {
-      data.forEach((signedItem, index) => {
-        if (signedItem.signedUrl) {
-          const originalItem = items[index];
-          signedMap[`${originalItem.id}-${originalItem.field}`] = signedItem.signedUrl;
+      // Criar mapa temporário de path -> signedUrl
+      const pathMap: Record<string, string> = {};
+      data.forEach(d => {
+        if (d.signedUrl) {
+          // Extrair o path original da URL assinada ou usar a ordem
+          // Como createSignedUrls mantém a ordem dos uniquePaths:
+          pathMap[d.path || ''] = d.signedUrl;
+        }
+      });
+
+      // Se d.path não vier, precisamos de um fallback mais seguro. 
+      // Supabase costuma retornar na mesma ordem.
+      items.forEach(item => {
+        const signedInfo = data.find(d => d.path === item.path);
+        if (signedInfo?.signedUrl) {
+          signedMap[`${item.id}-${item.field}`] = signedInfo.signedUrl;
         }
       });
     } else if (error) {
@@ -109,6 +123,8 @@ export async function signSingleUrl(input: string | null | undefined, expiresIn 
 
   // If it's a full Supabase URL, sign it
   if (info) {
+    if (info.bucket === 'photos') return input; // Já é público
+    
     const { data, error } = await supabase.storage
       .from(info.bucket)
       .createSignedUrl(info.path, expiresIn);
