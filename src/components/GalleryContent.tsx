@@ -567,7 +567,7 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
                 <motion.div 
                   className={styles.lightboxImageContainer}
                   animate={{ 
-                    scale: isZooming ? 1.4 : 1,
+                    scale: isZooming ? 1.15 : 1,
                     originX: focalPoint.x / 100,
                     originY: focalPoint.y / 100
                   }}
@@ -580,7 +580,7 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
                 >
                   <Image 
                     ref={imgRef}
-                    src={displayPhotos[selectedIndex].thumbnail_url} 
+                    src={displayPhotos[selectedIndex].full_res_url || displayPhotos[selectedIndex].thumbnail_url} 
                     alt="Ampliada" 
                     className={styles.lightboxImage}
                     fill
