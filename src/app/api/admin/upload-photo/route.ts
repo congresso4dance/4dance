@@ -7,11 +7,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  // Verificar autenticação via cookie de sessão
   const supabaseUser = await createClient();
   const { data: { user } } = await supabaseUser.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  const { data: profile } = await supabaseUser
+  // Usar service role para ler perfil (evita bloqueio de RLS em user_profiles)
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: profile } = await supabaseAdmin
     .from('user_profiles')
     .select('role')
     .eq('id', user.id)
@@ -19,7 +22,7 @@ export async function POST(req: Request) {
 
   const role = profile?.role?.toLowerCase();
   if (!['admin', 'owner', 'photographer', 'editor'].includes(role ?? '')) {
-    return NextResponse.json({ error: `Sem permissão (role: ${role})` }, { status: 403 });
+    return NextResponse.json({ error: `Sem permissão (role: ${role ?? 'null'})` }, { status: 403 });
   }
 
   const formData = await req.formData();
@@ -32,7 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdmin();
+  const supabase = supabaseAdmin;
   const baseName = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const fileExt = fullFile.name.split('.').pop() || 'jpg';
   const fullPath = `${eventId}/full_${baseName}.${fileExt}`;
