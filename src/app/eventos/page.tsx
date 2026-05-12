@@ -42,14 +42,14 @@ export default async function EventsListPage({
           if (!coverUrl) {
             const { data: firstPhoto } = await supabase
               .from('photos')
-              .select('thumbnail_url')
+              .select('full_res_url')
               .eq('event_id', e.id)
               .order('created_at', { ascending: true })
               .limit(1)
               .maybeSingle();
             
             if (firstPhoto) {
-              coverUrl = firstPhoto.thumbnail_url;
+              coverUrl = firstPhoto.full_res_url;
             }
           }
 

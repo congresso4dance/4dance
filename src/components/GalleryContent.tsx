@@ -64,7 +64,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onT
     >
       <div className={styles.imageWrapper} onClick={onSelect}>
         <Image 
-          src={photo.thumbnail_url} 
+          src={isPaid ? photo.thumbnail_url : (photo.full_res_url || photo.thumbnail_url)} 
           alt="Foto 4Dance" 
           className={styles.galleryImg}
           fill
