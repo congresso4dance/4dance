@@ -6,14 +6,10 @@ import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// POST /api/admin/upload-photo
-// Body JSON: { eventId, photographerId?, fullExt, thumbExt }
-// Returns: { fullUploadUrl, thumbUploadUrl, fullPath, thumbPath }
-// After uploading directly to storage, call POST /api/admin/upload-photo/confirm
 export async function POST(req: Request) {
   const supabaseUser = await createClient();
   const { data: { user } } = await supabaseUser.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   const { data: profile } = await supabaseUser
     .from('user_profiles')
@@ -23,45 +19,58 @@ export async function POST(req: Request) {
 
   const role = profile?.role?.toLowerCase();
   if (!['admin', 'owner', 'photographer', 'editor'].includes(role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: `Sem permissão (role: ${role})` }, { status: 403 });
   }
 
-  const body = await req.json() as {
-    eventId: string;
-    photographerId?: string;
-    fullExt: string;
-    thumbExt: string;
-  };
+  const formData = await req.formData();
+  const fullFile = formData.get('full') as File | null;
+  const thumbFile = formData.get('thumb') as File | null;
+  const eventId = formData.get('eventId') as string | null;
+  const photographerId = formData.get('photographerId') as string | null;
 
-  const { eventId, photographerId, fullExt = 'jpg', thumbExt = 'jpg' } = body;
-  if (!eventId) return NextResponse.json({ error: 'Missing eventId' }, { status: 400 });
+  if (!fullFile || !thumbFile || !eventId) {
+    return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
+  }
 
   const supabase = getSupabaseAdmin();
   const baseName = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const fullPath = `${eventId}/full_${baseName}.${fullExt}`;
-  const thumbPath = `${eventId}/thumb_${baseName}.${thumbExt}`;
+  const fileExt = fullFile.name.split('.').pop() || 'jpg';
+  const fullPath = `${eventId}/full_${baseName}.${fileExt}`;
+  const thumbPath = `${eventId}/thumb_${baseName}.jpg`;
 
-  const [{ data: fullSign, error: e1 }, { data: thumbSign, error: e2 }] = await Promise.all([
-    supabase.storage.from(PHOTO_STORAGE_BUCKET).createSignedUploadUrl(fullPath),
-    supabase.storage.from(PHOTO_STORAGE_BUCKET).createSignedUploadUrl(thumbPath),
-  ]);
+  const fullBuffer = Buffer.from(await fullFile.arrayBuffer());
+  const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
 
-  if (e1 || e2 || !fullSign || !thumbSign) {
-    return NextResponse.json({ error: e1?.message || e2?.message || 'Failed to create signed URLs' }, { status: 500 });
+  const { error: fullError } = await supabase.storage
+    .from(PHOTO_STORAGE_BUCKET)
+    .upload(fullPath, fullBuffer, { contentType: 'image/jpeg', upsert: false });
+
+  if (fullError) {
+    return NextResponse.json({ error: `Storage (full): ${fullError.message}` }, { status: 500 });
   }
 
-  // Save pending record so confirm can find it
+  const { error: thumbError } = await supabase.storage
+    .from(PHOTO_STORAGE_BUCKET)
+    .upload(thumbPath, thumbBuffer, { contentType: 'image/jpeg', upsert: false });
+
+  if (thumbError) {
+    return NextResponse.json({ error: `Storage (thumb): ${thumbError.message}` }, { status: 500 });
+  }
+
   const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
   const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
 
-  return NextResponse.json({
-    fullUploadUrl: fullSign.signedUrl,
-    thumbUploadUrl: thumbSign.signedUrl,
-    fullPath,
-    thumbPath,
-    fullUrl,
-    thumbUrl,
-    eventId,
-    photographerId: photographerId || null,
+  const { error: dbError } = await supabase.from('photos').insert({
+    event_id: eventId,
+    full_res_url: fullUrl,
+    thumbnail_url: thumbUrl,
+    storage_path: fullPath,
+    photographer_id: photographerId || null,
   });
+
+  if (dbError) {
+    return NextResponse.json({ error: `DB: ${dbError.message}` }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
