@@ -9,15 +9,15 @@ function generateCSP() {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ""};
-    style-src 'self' 'unsafe-inline';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: https://*.supabase.co https://*.stripe.com;
-    font-src 'self' data:;
+    font-src 'self' data: https://fonts.gstatic.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' https://*.supabase.co https://*.stripe.com https://api.google.com https://www.google-analytics.com https://region1.google-analytics.com;
+    connect-src 'self' ws: wss: https://*.supabase.co https://*.stripe.com https://api.google.com https://www.google-analytics.com https://region1.google-analytics.com;
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim()
 
