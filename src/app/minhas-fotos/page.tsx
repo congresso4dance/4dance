@@ -271,7 +271,7 @@ function MinhasFotosContent() {
               >
                 <div className={styles.imageBox}>
                   <Image 
-                    src={`${photo.full_res_url}?width=600&quality=70`} 
+                    src={photo.full_res_url} 
                     alt="Sua foto" 
                     fill 
                     style={{ objectFit: 'cover' }}

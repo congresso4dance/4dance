@@ -177,7 +177,7 @@
   overflow: hidden;
   background: #111;
   border: 1px solid rgba(255,255,255,0.05);
-  aspect-ratio: 3/4;
+  aspect-ratio: 1 / 1;
   position: relative;
 }
 
