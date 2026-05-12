@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Outfit, Montserrat } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import SmoothScroll from "@/components/SmoothScroll";
 import Preloader from "@/components/Preloader";
+import CookieBanner from "@/components/CookieBanner";
+import Analytics from "@/components/Analytics";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -51,13 +51,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  const nonce = (await headers()).get("x-nonce") || undefined;
 
   return (
     <html lang="pt-BR">
@@ -67,23 +66,8 @@ export default async function RootLayout({
           {children}
         </SmoothScroll>
         <WhatsAppButton />
-        {gaId && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-              strategy="afterInteractive"
-              nonce={nonce}
-            />
-            <Script id="google-analytics" strategy="afterInteractive" nonce={nonce}>
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){window.dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${gaId}');
-              `}
-            </Script>
-          </>
-        )}
+        <CookieBanner />
+        {gaId && <Analytics gaId={gaId} />}
       </body>
     </html>
   );
