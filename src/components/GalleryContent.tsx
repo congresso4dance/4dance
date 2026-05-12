@@ -54,37 +54,28 @@ function getErrorMessage(error: unknown) {
 
 // Componente para item de foto com Parallax Individual (Apple Elite)
 const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onToggleFavorite, onAddToCart, isInCart, isPaid }: ParallaxPhotoProps) => {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"]
-  });
-
-  const y = useTransform(scrollYProgress, [0, 1], [0, -20]);
-  const smoothY = useSpring(y, { stiffness: 60, damping: 20 });
-
   return (
     <motion.div 
-      ref={ref}
       className={styles.photoItem}
       layoutId={`photo-${photo.id}`}
-      style={{ y: smoothY }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index % 10 * 0.05 }}
     >
       <div className={styles.imageWrapper} onClick={onSelect}>
         <Image 
           src={photo.thumbnail_url} 
           alt="Foto 4Dance" 
           className={styles.galleryImg}
-          width={0}
-          height={0}
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          loading={index < 6 ? "eager" : "lazy"}
-          priority={index < 6}
-          style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
+          fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+          loading={index < 8 ? "eager" : "lazy"}
+          priority={index < 8}
+          unoptimized
+          style={{ objectFit: 'cover' }}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
         />
-        {/* Marca d'água removida das miniaturas para ficar mais limpo. Aparece apenas no Lightbox em eventos pagos. */}
         <div className={styles.overlay}>
           {photo.isFiltered && (
             <div className={styles.iaBadges}>
@@ -127,7 +118,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onT
                   handleDownload(photo);
                 }}
               >
-                <Download size={16} /> Baixar HD Grátis
+                <Download size={16} /> Baixar HD
               </button>
             )}
             <button 
@@ -136,7 +127,7 @@ const ParallaxPhoto = ({ photo, index, onSelect, handleDownload, isFavorite, onT
                 e.stopPropagation();
                 handleDownload(photo);
               }}
-              title={isPaid ? "Baixar Prévia Grátis" : "Baixar HD Grátis"}
+              title={isPaid ? "Baixar Prévia" : "Baixar HD"}
             >
               <Download size={16} />
             </button>

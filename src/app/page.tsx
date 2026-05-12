@@ -31,8 +31,9 @@ export default async function Home() {
               .from('photos')
               .select('thumbnail_url')
               .eq('event_id', e.id)
+              .order('created_at', { ascending: true })
               .limit(1)
-              .single();
+              .maybeSingle();
             
             if (firstPhoto) {
               coverUrl = firstPhoto.thumbnail_url;
