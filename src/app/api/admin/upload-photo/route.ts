@@ -5,6 +5,9 @@ import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+// Aumenta limite do body para 50MB (fotos originais podem ser grandes)
+export const fetchCache = 'force-no-store';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   // Verify the user is authenticated and has admin/photographer/owner role
