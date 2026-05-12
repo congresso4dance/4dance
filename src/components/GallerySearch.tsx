@@ -220,24 +220,23 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
           resultCount = photoIds.length;
         }
 
-        // Log search (async)
-        supabase.from('search_logs').insert({
+        await supabase.from('search_logs').insert({
           event_id: currentEventId,
           success: success,
           results_count: resultCount,
           user_agent: navigator.userAgent
-        }).then();
+        });
 
       } else {
         onFilter(null);
         setStatus("Nenhuma foto encontrada com base nos seus traços.");
-        
-        // Log failed search
-        supabase.from('search_logs').insert({
+
+        await supabase.from('search_logs').insert({
+          event_id: eventId,
           success: false,
           results_count: 0,
           user_agent: navigator.userAgent
-        }).then();
+        });
       }
     } catch (err) {
       console.error("Search error:", err);
