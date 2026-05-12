@@ -17,9 +17,11 @@ export async function applyWatermark(file: File): Promise<Blob> {
           return;
         }
 
-        // Definir dimensões
-        canvas.width = img.width;
-        canvas.height = img.height;
+        // Resize para thumbnail: máximo 1200px de largura
+        const MAX_WIDTH = 1200;
+        const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
 
         // Desenhar imagem original
         ctx.drawImage(img, 0, 0);

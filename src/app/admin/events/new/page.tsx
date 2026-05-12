@@ -8,7 +8,6 @@ import { useDropzone } from 'react-dropzone';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { logAdminAction } from '@/utils/admin-logger';
-import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
 import styles from './new-event.module.css';
 
 import { Camera, Wallet } from 'lucide-react';
@@ -115,48 +114,38 @@ export default function NewEventPage() {
     // NEW: Log the event creation
     await logAdminAction('CREATE_EVENT', { title: data.title }, event.id);
 
-    // 2. Upload Photos with Watermark
+    // 2. Upload Photos with Watermark (via server-side API to bypass storage RLS)
     let count = 0;
+    let errors = 0;
     for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const baseName = `${Date.now()}-${Math.random()}`;
-      const fullPath = `${event.id}/full_${baseName}.${fileExt}`;
-      const thumbPath = `${event.id}/thumb_${baseName}.${fileExt}`;
-
       try {
-        // Aplicar Marca d'água
         const { applyWatermark } = await import('@/utils/watermark');
         const wmBlob = await applyWatermark(file);
         const wmFile = new File([wmBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
 
-        // Upload High Res
-        const { error: fullError } = await supabase.storage
-          .from(PHOTO_STORAGE_BUCKET)
-          .upload(fullPath, file);
+        const fd = new FormData();
+        fd.append('full', file);
+        fd.append('thumb', wmFile);
+        fd.append('eventId', event.id);
+        if (data.photographer_id) fd.append('photographerId', data.photographer_id);
 
-        // Upload Watermarked
-        const { error: thumbError } = await supabase.storage
-          .from(PHOTO_STORAGE_BUCKET)
-          .upload(thumbPath, wmFile);
-
-        if (!fullError && !thumbError) {
-          const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
-          const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
-
-          await supabase.from('photos').insert({
-            event_id: event.id,
-            full_res_url: fullUrl,
-            thumbnail_url: thumbUrl,
-            storage_path: fullPath,
-            photographer_id: data.photographer_id || null
-          });
+        const res = await fetch('/api/admin/upload-photo', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error('Upload error:', body.error || res.status);
+          errors++;
         }
       } catch (err) {
         console.error("Upload error:", err);
+        errors++;
       }
-      
+
       count++;
       setProgress(Math.round((count / files.length) * 100));
+    }
+
+    if (errors > 0) {
+      showToast(`${errors} foto(s) falharam no upload. Verifique o console.`, 'error');
     }
 
     setUploading(false);
