@@ -95,11 +95,14 @@ export default async function EventGalleryPage({ params }: Props) {
 
   const galleryPhotos = (signedRawPhotos as unknown as Array<GalleryPhoto & { thumbnail_url?: string | null; full_res_url?: string | null }>)
     .filter((photo) => Boolean(photo.thumbnail_url))
-    .map((photo) => ({
-      ...photo,
-      thumbnail_url: photo.thumbnail_url || '',
-      full_res_url: photo.full_res_url || photo.thumbnail_url || '',
-    }));
+    .map((photo) => {
+      const cleanUrl = photo.full_res_url || photo.thumbnail_url || '';
+      return {
+        ...photo,
+        thumbnail_url: event.is_paid ? (photo.thumbnail_url || '') : cleanUrl,
+        full_res_url: photo.full_res_url || photo.thumbnail_url || '',
+      };
+    });
   const photos = event.is_paid
     ? galleryPhotos.map((photo) => ({ ...photo, full_res_url: photo.thumbnail_url }))
     : galleryPhotos;
