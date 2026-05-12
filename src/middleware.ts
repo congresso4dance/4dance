@@ -46,7 +46,7 @@ function isRateLimited(ip: string) {
   return record.count > maxRequests
 }
 
-export default async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') || 'anonymous'
   
   // 1. 🔒 Rate Limiting
@@ -121,17 +121,21 @@ export default async function proxy(request: NextRequest) {
       }
     )
 
-    const { data: profile } = await adminSupabase
+    const { data: profile, error } = await adminSupabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
+      
+    if (error) console.error('Proxy profile error:', error)
 
-    const role = profile?.role || 'user'
+    const role = (profile?.role || 'user').toLowerCase()
+    console.log(`[PROXY] User ${user.email} -> Role fetched: ${role}`)
 
     // Regras de Acesso por Role (Hierarquia Elite)
     const allowedRoles = ['owner', 'admin', 'editor', 'assistant']
     if (!allowedRoles.includes(role)) {
+      console.log(`[PROXY] Access DENIED for role: ${role}. Redirecting to /`)
       return NextResponse.redirect(new URL('/', request.url))
     }
 
@@ -169,9 +173,9 @@ export default async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role || 'user'
+    const role = (profile?.role || 'user').toUpperCase()
 
-    const allowedRoles = ['PHOTOGRAPHER', 'owner', 'admin', 'editor']
+    const allowedRoles = ['PHOTOGRAPHER', 'OWNER', 'ADMIN', 'EDITOR']
     if (!allowedRoles.includes(role)) {
       return NextResponse.redirect(new URL('/', request.url))
     }
@@ -195,9 +199,9 @@ export default async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role || 'user'
+    const role = (profile?.role || 'user').toUpperCase()
 
-    const allowedRoles = ['PRODUCER', 'owner', 'admin']
+    const allowedRoles = ['PRODUCER', 'OWNER', 'ADMIN']
     if (!allowedRoles.includes(role)) {
       return NextResponse.redirect(new URL('/', request.url))
     }

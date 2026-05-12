@@ -53,8 +53,9 @@ function LoginForm() {
         .single();
 
       if (profileError || !profile) {
-        // Fallback for old users or missing profiles
-        window.location.href = '/minha-conta';
+        console.error('Erro ao buscar profile no login:', profileError);
+        // Fallback: tenta mandar pro /admin, e o middleware decide se permite ou redireciona
+        window.location.href = '/admin';
       } else {
         // Dynamic Redirect
         const adminRoles = ['owner', 'admin', 'editor', 'assistant'];
