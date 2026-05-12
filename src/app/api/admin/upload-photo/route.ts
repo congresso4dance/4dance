@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   // Usar service role para ler perfil (evita bloqueio de RLS em user_profiles)
   const supabaseAdmin = getSupabaseAdmin();
   const { data: profile } = await supabaseAdmin
-    .from('user_profiles')
+    .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
