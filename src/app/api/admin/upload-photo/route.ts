@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { createClient } from '@/utils/supabase/server';
 import { getSupabaseAdmin } from '@/utils/storage-helper';
-import { PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
+import { uploadToR2, toR2Ref } from '@/utils/r2-storage';
 import { logAdminAction } from '@/utils/audit';
+
+// Dimensões/qualidade da imagem "cheia" servida no lightbox/download e da
+// miniatura usada na grade da galeria. Antes, o "thumb" era literalmente o
+// mesmo arquivo do "full" (às vezes até o arquivo original sem compressão),
+// o que fazia toda a galeria carregar full-res só pra mostrar uma miniatura
+// pequena — dobrando o storage e explodindo o egress no Supabase.
+const FULL_MAX_DIMENSION = 2400;
+const FULL_QUALITY = 85;
+const THUMB_MAX_DIMENSION = 640;
+const THUMB_QUALITY = 72;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,46 +39,54 @@ export async function POST(req: Request) {
 
   const formData = await req.formData();
   const fullFile = formData.get('full') as File | null;
-  const thumbFile = formData.get('thumb') as File | null;
   const eventId = formData.get('eventId') as string | null;
   const photographerId = formData.get('photographerId') as string | null;
+  // O campo 'thumb' ainda pode chegar de clientes antigos, mas é ignorado:
+  // o thumbnail de verdade agora é sempre gerado aqui no servidor a partir
+  // do 'full', então nunca fica igual (ou maior) que a imagem cheia.
 
-  if (!fullFile || !thumbFile || !eventId) {
+  if (!fullFile || !eventId) {
     return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
   }
 
   const supabase = supabaseAdmin;
   const baseName = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const fileExt = fullFile.name.split('.').pop() || 'jpg';
-  const fullPath = `${eventId}/full_${baseName}.${fileExt}`;
+  const fullPath = `${eventId}/full_${baseName}.jpg`;
   const thumbPath = `${eventId}/thumb_${baseName}.jpg`;
 
-  const fullBuffer = Buffer.from(await fullFile.arrayBuffer());
-  const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
+  const originalBuffer = Buffer.from(await fullFile.arrayBuffer());
 
-  const { error: fullError } = await supabase.storage
-    .from(PHOTO_STORAGE_BUCKET)
-    .upload(fullPath, fullBuffer, { contentType: 'image/jpeg', upsert: false });
+  let fullBuffer: Buffer;
+  let thumbBuffer: Buffer;
+  try {
+    const image = sharp(originalBuffer).rotate(); // aplica orientação EXIF e depois descarta metadata
 
-  if (fullError) {
-    return NextResponse.json({ error: `Storage (full): ${fullError.message}` }, { status: 500 });
+    fullBuffer = await image
+      .clone()
+      .resize({ width: FULL_MAX_DIMENSION, height: FULL_MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: FULL_QUALITY, mozjpeg: true })
+      .toBuffer();
+
+    thumbBuffer = await image
+      .clone()
+      .resize({ width: THUMB_MAX_DIMENSION, height: THUMB_MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
+      .toBuffer();
+  } catch (imgError: any) {
+    return NextResponse.json({ error: `Falha ao processar imagem: ${imgError.message}` }, { status: 400 });
   }
 
-  const { error: thumbError } = await supabase.storage
-    .from(PHOTO_STORAGE_BUCKET)
-    .upload(thumbPath, thumbBuffer, { contentType: 'image/jpeg', upsert: false });
-
-  if (thumbError) {
-    return NextResponse.json({ error: `Storage (thumb): ${thumbError.message}` }, { status: 500 });
+  try {
+    await uploadToR2(fullPath, fullBuffer, 'image/jpeg');
+    await uploadToR2(thumbPath, thumbBuffer, 'image/jpeg');
+  } catch (r2Error: any) {
+    return NextResponse.json({ error: `Storage (R2): ${r2Error.message}` }, { status: 500 });
   }
-
-  const fullUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(fullPath).data.publicUrl;
-  const thumbUrl = supabase.storage.from(PHOTO_STORAGE_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
 
   const { error: dbError } = await supabase.from('photos').insert({
     event_id: eventId,
-    full_res_url: fullUrl,
-    thumbnail_url: thumbUrl,
+    full_res_url: toR2Ref(fullPath),
+    thumbnail_url: toR2Ref(thumbPath),
     storage_path: fullPath,
     photographer_id: photographerId || null,
   });

@@ -14,10 +14,14 @@ export default async function EventsListPage({
   const supabase = await createClient();
 
   // 1. Fetch ALL public events to extract styles for the filter bar
-  const { data: allEvents } = await supabase
+  const { data: allEvents, error: allEventsError } = await supabase
     .from('events')
     .select('styles')
     .eq('is_public', true);
+
+  if (allEventsError) {
+    console.error('[eventos] Falha ao buscar estilos de eventos:', allEventsError.message);
+  }
 
   const uniqueStyles = Array.from(new Set(allEvents?.flatMap(e => e.styles || []) || [])).sort();
 
@@ -32,7 +36,14 @@ export default async function EventsListPage({
     query = query.contains('styles', [style]);
   }
 
-  const { data: rawEvents } = await query;
+  const { data: rawEvents, error: eventsError } = await query;
+
+  // Distinguir "sem eventos" de "erro de conexão com o banco" — sem isso, uma
+  // instabilidade no Supabase (ex: projeto pausado) fica indistinguível de
+  // uma galeria genuinamente vazia para quem visita o site.
+  if (eventsError) {
+    console.error('[eventos] Falha ao buscar eventos:', eventsError.message);
+  }
 
   const events = rawEvents
     ? await Promise.all(
@@ -117,7 +128,11 @@ export default async function EventsListPage({
               );
             })}
             {(!events || events.length === 0) && (
-              <p className={styles.empty}>Processando novos eventos... Volte em breve!</p>
+              <p className={styles.empty}>
+                {eventsError
+                  ? 'Estamos com instabilidade técnica no momento. Tente novamente em alguns minutos.'
+                  : 'Processando novos eventos... Volte em breve!'}
+              </p>
             )}
           </div>
         </div>

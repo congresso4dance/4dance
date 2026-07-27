@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { LEGACY_PHOTO_STORAGE_BUCKET, PHOTO_STORAGE_BUCKET } from '@/utils/storage-constants';
+import { getR2SignedUrl, parseR2Ref } from '@/utils/r2-storage';
 
 type PhotoEvent = {
   id: string;
@@ -11,6 +12,7 @@ type PhotoEvent = {
 type DownloadPhoto = {
   id: string;
   storage_path: string;
+  full_res_url: string | null;
   events: PhotoEvent | null;
 };
 
@@ -43,7 +45,7 @@ export async function GET(req: Request) {
     // 1. Fetch photo and its event pricing policy
     const { data: photoData, error: photoError } = await supabaseAdmin
       .from('photos')
-      .select('id, storage_path, events(id, is_paid)') // 🔒 Lei 9: Projeção explícita
+      .select('id, storage_path, full_res_url, events(id, is_paid)') // 🔒 Lei 9: Projeção explícita
       .eq('id', photoId)
       .single();
     const photo = photoData as DownloadPhoto | null;
@@ -86,23 +88,38 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Acesso negado. Esta foto precisa ser comprada.' }, { status: 403 });
     }
 
-    // 3. GENERATE SIGNED URL (Resilient to bucket name)
-    const buckets = [PHOTO_STORAGE_BUCKET, LEGACY_PHOTO_STORAGE_BUCKET];
-    let signedUrl = null;
-    let lastError = null;
+    // 3. GENERATE SIGNED URL — se a foto já foi migrada pro R2 (full_res_url
+    // no formato "r2://<key>"), assina lá. Senão, usa o Supabase Storage
+    // legado. Importante: URL assinada do R2 não valida se o arquivo existe
+    // (é gerada offline), então a decisão precisa vir do dado salvo no banco,
+    // não de "tentar e ver se falha".
+    let signedUrl: string | null = null;
+    let lastError: unknown = null;
 
-    for (const b of buckets) {
-      const { data: signedData, error: signedError } = await supabaseAdmin.storage
-        .from(b)
-        .createSignedUrl(photo.storage_path, 3600, {
-            download: true
-        });
-      
-      if (!signedError && signedData?.signedUrl) {
-        signedUrl = signedData.signedUrl;
-        break;
+    const r2Key = parseR2Ref(photo.full_res_url);
+    if (r2Key) {
+      try {
+        signedUrl = await getR2SignedUrl(r2Key, 3600, r2Key.split('/').pop());
+      } catch (r2Err) {
+        lastError = r2Err;
       }
-      lastError = signedError;
+    }
+
+    if (!signedUrl) {
+      const buckets = [PHOTO_STORAGE_BUCKET, LEGACY_PHOTO_STORAGE_BUCKET];
+      for (const b of buckets) {
+        const { data: signedData, error: signedError } = await supabaseAdmin.storage
+          .from(b)
+          .createSignedUrl(photo.storage_path, 3600, {
+              download: true
+          });
+
+        if (!signedError && signedData?.signedUrl) {
+          signedUrl = signedData.signedUrl;
+          break;
+        }
+        lastError = signedError;
+      }
     }
 
     if (!signedUrl) {
