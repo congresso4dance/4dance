@@ -50,7 +50,7 @@ export default async function SalesRecoveryPage() {
         <p style={{ color: 'rgba(255,255,255,0.5)' }}>Resgate clientes que deixaram fotos no carrinho e não finalizaram o PIX.</p>
       </header>
 
-      <div className={styles.stats}>
+      <div className={styles.statsGrid}>
         <div className={styles.statCard} style={{ borderLeft: '4px solid #ef4444' }}>
           <TrendingUp size={24} color="#ef4444" style={{ marginBottom: '1rem' }} />
           <h3>Dinheiro Retido</h3>

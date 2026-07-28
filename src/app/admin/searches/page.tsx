@@ -36,7 +36,7 @@ export default async function AdminSearchesPage() {
         </div>
       </header>
 
-      <section className={styles.stats} style={{ marginTop: '2rem' }}>
+      <section className={styles.statsGrid} style={{ marginTop: '2rem' }}>
         <div className={styles.statCard}>
           <div className={styles.statIcon}><Activity size={20} color="#3b82f6" /></div>
           <h3>Total de Consultas</h3>

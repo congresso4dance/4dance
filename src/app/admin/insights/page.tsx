@@ -70,7 +70,7 @@ export default async function InsightsPage() {
       </header>
 
       {/* Main Stats Cards */}
-      <section className={styles.stats} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+      <section className={styles.statsGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <div className={styles.statCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <DollarSign size={24} color="#10b981" />
