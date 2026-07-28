@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { parseR2Ref, getR2SignedUrl } from './r2-storage';
+import { parseR2Ref, toR2ProxyUrl } from './r2-storage';
 
 /**
  * Creates a Supabase Admin client with service_role privileges.
@@ -54,15 +54,12 @@ export async function signPhotoUrls<T extends { id: string; thumbnail_url?: stri
     if (fullKey) r2Jobs.push({ id: p.id, field: 'full_res_url', key: fullKey });
   });
 
-  if (r2Jobs.length > 0) {
-    await Promise.all(r2Jobs.map(async (job) => {
-      try {
-        r2SignedMap[`${job.id}-${job.field}`] = await getR2SignedUrl(job.key, expiresIn);
-      } catch (err) {
-        console.error(`Error signing R2 URL for key ${job.key}:`, err);
-      }
-    }));
-  }
+  // URLs de exibição (galeria/lightbox) passam pelo nosso proxy — não pela
+  // URL assinada S3 direto — porque o navegador toma 503 do Cloudflare ao
+  // carregar <img> direto na API do R2 (ver /api/photos/r2-image).
+  r2Jobs.forEach((job) => {
+    r2SignedMap[`${job.id}-${job.field}`] = toR2ProxyUrl(job.key);
+  });
 
   // 2. Fotos antigas ainda no Supabase Storage (compatibilidade durante a migração).
   const supabase = getSupabaseAdmin();
@@ -152,12 +149,7 @@ export async function signSingleUrl(input: string | null | undefined, expiresIn 
 
   const r2Key = parseR2Ref(input);
   if (r2Key) {
-    try {
-      return await getR2SignedUrl(r2Key, expiresIn);
-    } catch (err) {
-      console.error('Error signing R2 URL:', err);
-      return input;
-    }
+    return toR2ProxyUrl(r2Key);
   }
 
   const info = extractStorageInfo(input);

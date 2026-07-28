@@ -101,3 +101,22 @@ export async function getR2SignedUrl(key: string, expiresIn = 21600, downloadFil
   });
   return getSignedUrl(client, command, { expiresIn });
 }
+
+/**
+ * Baixa um objeto do R2 direto pelo servidor (usando nossas credenciais,
+ * nunca expostas ao navegador). Usado pela rota de proxy de imagem — o
+ * Cloudflare bloqueia (503) requisições de <img> direto do navegador pra API
+ * S3 do R2 (proteção contra hotlinking), mas do servidor funciona normal.
+ */
+export async function downloadFromR2(key: string): Promise<{ buffer: Buffer; contentType?: string }> {
+  const client = getR2Client();
+  const result = await client.send(new GetObjectCommand({ Bucket: getBucketName(), Key: key }));
+  if (!result.Body) throw new Error('Objeto sem conteúdo');
+  const bytes = await result.Body.transformToByteArray();
+  return { buffer: Buffer.from(bytes), contentType: result.ContentType };
+}
+
+/** URL (própria, do nosso servidor) que faz proxy de uma foto do R2 pro navegador. */
+export function toR2ProxyUrl(key: string): string {
+  return `/api/photos/r2-image?key=${encodeURIComponent(key)}`;
+}
