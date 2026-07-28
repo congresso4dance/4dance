@@ -98,12 +98,21 @@ export default async function EventGalleryPage({ params }: Props) {
   let photosError: unknown = null;
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data: batch, count, error: batchError } = await supabaseAdmin
+    // O cast via `unknown` é necessário porque `photoFields` é uma união de
+    // dois literais diferentes ('*' ou uma lista de colunas) — o parser de
+    // tipos do supabase-js não consegue inferir um shape único a partir disso
+    // e gera um tipo `ParserError` interno que quebra o build (TS2352) se a
+    // gente tentar tipar o resultado diretamente.
+    const { data: batch, count, error: batchError } = (await supabaseAdmin
       .from('photos')
       .select(photoFields, { count: 'exact' })
       .eq('event_id', event.id)
       .order('created_at', { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
+      .range(offset, offset + PAGE_SIZE - 1)) as unknown as {
+        data: Record<string, unknown>[] | null;
+        count: number | null;
+        error: unknown;
+      };
 
     if (batchError) {
       photosError = batchError;
@@ -111,7 +120,7 @@ export default async function EventGalleryPage({ params }: Props) {
     }
 
     totalPhotosCount = count ?? totalPhotosCount;
-    rawPhotos = rawPhotos.concat((batch || []) as Record<string, unknown>[]);
+    rawPhotos = rawPhotos.concat(batch || []);
 
     if (!batch || batch.length < PAGE_SIZE) break;
   }
