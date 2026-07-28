@@ -10,6 +10,7 @@ import Image from 'next/image';
 import AIIndexer from '@/components/AIIndexer';
 import styles from '../edit-event.module.css';
 import { signDisplayPhotos } from '@/app/actions/storage-actions';
+import { indexEventPhotos } from '@/utils/face-indexing';
 import { useToast } from '@/hooks/useToast';
 import ToastContainer from '@/components/ToastContainer';
 
@@ -49,6 +50,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [saving, setSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0, errors: 0 });
+  const [isIndexing, setIsIndexing] = useState(false);
+  const [indexProgress, setIndexProgress] = useState({ done: 0, total: 0 });
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { toasts, showToast, removeToast } = useToast();
@@ -334,6 +337,16 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             </div>
           </div>
         )}
+        {isIndexing && (
+          <div style={{ margin: '1rem 0', background: '#111', borderRadius: '8px', padding: '1rem' }}>
+            <p style={{ marginBottom: '8px', color: '#fff' }}>
+              🧠 Indexando rostos (IA): {indexProgress.done}/{indexProgress.total}
+            </p>
+            <div style={{ background: '#333', borderRadius: '4px', height: '8px' }}>
+              <div style={{ background: 'var(--primary, #ceac66)', height: '8px', borderRadius: '4px', width: `${indexProgress.total > 0 ? Math.round((indexProgress.done / indexProgress.total) * 100) : 0}%`, transition: 'width 0.3s' }} />
+            </div>
+          </div>
+        )}
         <div className={styles.sectionHeader}>
           <h2>Gerenciar Fotos ({photos.length})</h2>
           <label className={styles.uploadBtn}>
@@ -382,13 +395,31 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 if (successCount > 0) {
                   await logAdminAction('UPLOAD_PHOTOS', { count: successCount }, id);
                   showToast(`✅ ${successCount} foto(s) salvas com sucesso!`, 'success');
+
+                  // Indexação facial automática — não precisa mais clicar em
+                  // "Processar Galeria para IA" separadamente. Ainda roda no
+                  // navegador (face-api.js), então a aba precisa ficar aberta
+                  // até terminar.
+                  try {
+                    setIsIndexing(true);
+                    showToast('🧠 Indexando rostos automaticamente...', 'success');
+                    const result = await indexEventPhotos(id, (p) => setIndexProgress(p));
+                    if (result.processed > 0) {
+                      showToast(`✅ ${result.processed} foto(s) indexadas (${result.withFaces} com rosto detectado).`, 'success');
+                    }
+                  } catch (err) {
+                    console.error('Erro na indexação automática:', err);
+                    showToast('⚠️ Upload OK, mas a indexação automática falhou. Use "Processar Galeria para IA" manualmente.', 'error');
+                  } finally {
+                    setIsIndexing(false);
+                  }
                 }
                 if (errorCount > 0) {
                   showToast(`❌ ${errorCount} foto(s) falharam. Veja o console.`, 'error');
                 }
                 router.refresh();
                 window.location.reload();
-              }} 
+              }}
             />
             Upload de Fotos
           </label>

@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import * as faceapi from 'face-api.js';
 import { Brain, Cpu, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import styles from './AIIndexer.module.css';
-import { signDisplayPhotos } from '@/app/actions/storage-actions';
+import { loadFaceModels, indexEventPhotos } from '@/utils/face-indexing';
 
 interface AIIndexerProps {
   eventId: string;
@@ -32,13 +31,8 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
   async function loadModels() {
     if (modelsLoaded) return;
     setStatus("Carregando modelos de IA...");
-    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
     try {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
+      await loadFaceModels();
       setModelsLoaded(true);
       setStatus("Modelos prontos.");
     } catch (err) {
@@ -71,79 +65,19 @@ export default function AIIndexer({ eventId }: AIIndexerProps) {
     setIsProcessing(true);
     setStatus("Buscando fotos pendentes...");
 
-    // 1. Get all pending photos for this event
-    const { data: pendingPhotos } = await supabase
-      .from('photos')
-      .select('id, full_res_url')
-      .eq('event_id', eventId)
-      .eq('is_indexed', false);
+    const result = await indexEventPhotos(eventId, ({ done, total }) => {
+      setStatus(`Processando IA: ${done + 1} de ${total}...`);
+      setProgress(total > 0 ? Math.round((done / total) * 100) : 0);
+      setStats(prev => ({ ...prev, indexed: prev.indexed + (done > 0 ? 1 : 0), pending: Math.max(prev.pending - (done > 0 ? 1 : 0), 0) }));
+    });
 
-    if (!pendingPhotos || pendingPhotos.length === 0) {
+    if (result.processed === 0) {
       setStatus("Todas as fotos já estão indexadas! ✨");
-      setIsProcessing(false);
-      return;
+    } else {
+      setStatus("Indexação concluída com sucesso! 🚀");
     }
-
-    setStatus("Gerando URLs seguras...");
-    const signedPhotos = await signDisplayPhotos(pendingPhotos as { id: string; full_res_url?: string | null }[]);
-
-    let processedCount = 0;
-
-    for (const photo of signedPhotos) {
-      setStatus(`Processando IA: ${processedCount + 1} de ${pendingPhotos.length}...`);
-      
-      try {
-        // Load image for processing
-        if (!photo.full_res_url) continue;
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = photo.full_res_url;
-        await new Promise((res, rej) => {
-          img.onload = res;
-          img.onerror = rej;
-          // Timeout if image takes too long
-          setTimeout(() => rej(new Error("Timeout")), 10000);
-        });
-
-        // Detect all faces in photo
-        const detections = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceDescriptors();
-
-        if (detections.length > 0) {
-          const faceRecords = detections.map(det => ({
-            photo_id: photo.id,
-            embedding: `[${Array.from(det.descriptor).join(',')}]`
-          }));
-
-          await supabase.from('photo_faces').insert(faceRecords);
-        }
-        
-        // 3. IMPORTANT: Mark as indexed regardless of face detection success
-        await supabase
-          .from('photos')
-          .update({ is_indexed: true })
-          .eq('id', photo.id);
-
-      } catch (err) {
-        console.warn(`Erro na foto ${photo.id}:`, err);
-        // Even on error, we might want to mark as indexed to avoid breaking the loop
-        // but only if it's a persistent error like 404 or Invalid Data
-        await supabase
-          .from('photos')
-          .update({ is_indexed: true })
-          .eq('id', photo.id);
-      }
-
-      processedCount++;
-      setProgress(Math.round((processedCount / pendingPhotos.length) * 100));
-      setStats(prev => ({ ...prev, indexed: prev.indexed + 1, pending: prev.pending - 1 }));
-      
-      if (processedCount % 3 === 0) await new Promise(r => setTimeout(r, 50));
-    }
-
+    await fetchStats();
     setIsProcessing(false);
-    setStatus("Indexação concluída com sucesso! 🚀");
   }
 
   return (
