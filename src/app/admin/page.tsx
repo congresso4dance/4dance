@@ -2,7 +2,6 @@ import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
 import styles from './dashboard.module.css';
 import ExportLeadsBtn from '@/components/ExportLeadsBtn';
-import AdminNavbar from '@/components/AdminNavbar';
 import { Brain, Search, Target, Activity, Clock, ChevronRight, Eye, Edit3, Image as ImageIcon } from 'lucide-react';
 
 export default async function AdminDashboard() {
@@ -57,7 +56,6 @@ export default async function AdminDashboard() {
 
   return (
     <div className={styles.container}>
-      <AdminNavbar active="dashboard" />
       
       <header className={styles.header}>
         <div className={styles.headerTop}>
@@ -75,7 +73,7 @@ export default async function AdminDashboard() {
         </div>
       </header>
 
-      <section className={styles.stats}>
+      <section className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statIcon}><Search size={20} color="#3b82f6" /></div>
           <h3>Buscas Realizadas</h3>

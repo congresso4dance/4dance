@@ -24,6 +24,8 @@ const eventSchema = z.object({
   photo_price: z.any().optional(),
   commission_rate: z.any().optional(),
   photographer_id: z.string().optional().nullable(),
+  producer_id: z.string().optional().nullable(),
+  commission_producer: z.any().optional(),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -39,6 +41,11 @@ interface Photographer {
   full_name: string;
 }
 
+interface Producer {
+  id: string;
+  full_name: string;
+}
+
 import { Trash2, X, Wallet, Camera } from 'lucide-react';
 import { logAdminAction } from '@/utils/admin-logger';
 
@@ -46,6 +53,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photographers, setPhotographers] = useState<Photographer[]>([]);
+  const [producers, setProducers] = useState<Producer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -83,6 +91,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           photo_price: event.photo_price ?? 15.00,
           commission_rate: event.commission_rate ?? 0.10,
           photographer_id: event.photographer_id || '',
+          producer_id: event.producer_id || '',
+          commission_producer: event.commission_producer ?? 15,
         });
         originalCoverUrl.current = event.cover_url || '';
       }
@@ -94,6 +104,15 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         .eq('role', 'PHOTOGRAPHER');
 
       if (photogs) setPhotographers(photogs);
+
+      // 2b. Fetch Producers — pra vincular evento a um produtor direto pelo
+      // admin, sem precisar mexer no banco na mão (SQL manual).
+      const { data: prods } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('role', 'PRODUCER');
+
+      if (prods) setProducers(prods);
 
       // 3. Fetch Photos and sign URLs
       const { data: photosData } = await supabase
@@ -127,6 +146,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         photo_price: Number(data.photo_price),
         commission_rate: Number(data.commission_rate),
         photographer_id: data.photographer_id || null,
+        producer_id: data.producer_id || null,
+        commission_producer: Number(data.commission_producer),
         styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles
       })
       .eq('id', id);
@@ -310,6 +331,39 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                   <option key={p.id} value={p.id}>{p.full_name}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Marketplace: Produtor */}
+          <div className={styles.inputGroup} style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', marginBottom: '1.2rem', color: '#fff' }}>
+              <Wallet size={18} /> Marketplace do Produtor
+            </h3>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label>Produtor Responsável</label>
+              <select {...register('producer_id')} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: '#111', border: '1px solid #333', color: '#fff' }}>
+                <option value="">Nenhum (evento sem produtor vinculado)</option>
+                {producers.map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>
+                Vincula o evento ao Portal do Produtor dessa pessoa — sem isso o evento não aparece pra ela lá.
+              </p>
+            </div>
+
+            <div>
+              <label>Comissão do Produtor (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                {...register('commission_producer')}
+                placeholder="Ex: 15 para 15%"
+              />
+              <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>
+                Percentual do valor de cada venda que vai pro produtor.
+              </p>
             </div>
           </div>
 

@@ -29,11 +29,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   
   const { data: event } = await supabase
     .from('events')
-    .select('title, description, cover_url')
+    .select('title, description, cover_url, is_public')
     .eq('slug', slug)
     .single();
 
-  if (!event) return { title: 'Evento não encontrado | 4Dance' };
+  if (!event || !event.is_public) return { title: 'Evento não encontrado | 4Dance' };
 
   return {
     title: `${event.title} | 4Dance`,
@@ -66,6 +66,13 @@ export default async function EventGalleryPage({ params }: Props) {
     .single();
 
   if (!event || eventError) {
+    notFound();
+  }
+
+  // Evento "escondido" (is_public = false) não deve abrir por link direto —
+  // sem isso, quem tivesse o link salvo/compartilhado via em uma galeria com
+  // as fotos quebradas em vez de um 404 limpo.
+  if (!event.is_public) {
     notFound();
   }
 

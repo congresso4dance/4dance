@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server';
-import AdminNavbar from '@/components/AdminNavbar';
 import ImporterForm from '@/components/ImporterForm';
 import styles from './importer.module.css';
 
@@ -14,7 +13,6 @@ export default async function AdminImporterPage() {
 
   return (
     <div className={styles.container}>
-      <AdminNavbar active="importer" />
       
       <header className={styles.header}>
         <h1>Importador de Fotos (Facebook / Bulk)</h1>

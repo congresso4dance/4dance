@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server';
-import AdminNavbar from '@/components/AdminNavbar';
 import styles from '../dashboard.module.css';
 import { ShoppingCart, MessageCircle, Clock, TrendingUp, AlertCircle, Phone } from 'lucide-react';
 import Link from 'next/link';

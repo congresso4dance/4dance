@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 import { Database, Play, Pause, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import AdminNavbar from '@/components/AdminNavbar';
 import styles from '../ai-worker/ai-worker.module.css';
 
 // Eventos "Samba ao Quadrado" escolhidos para a primeira leva de migração.
@@ -88,7 +87,6 @@ export default function R2MigrationPage() {
 
   return (
     <div className={styles.container}>
-      <AdminNavbar active="settings" />
 
       <header className={styles.header}>
         <div className={styles.title}>

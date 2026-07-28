@@ -44,10 +44,6 @@ export default function PhotographerDashboard() {
       <section className={styles.walletCard}>
         <div className={styles.walletHeader}>
           <h3 className={styles.walletTitle}>Carteira</h3>
-          <select className={styles.currencySelect}>
-            <option>Real (R$)</option>
-            <option>Dólar (US$)</option>
-          </select>
         </div>
 
         <div className={styles.balanceInfo}>

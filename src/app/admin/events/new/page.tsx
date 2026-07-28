@@ -26,6 +26,8 @@ const eventSchema = z.object({
   password: z.string().optional().nullable(),
   commission_rate: z.any().optional(),
   photographer_id: z.string().optional().nullable(),
+  producer_id: z.string().optional().nullable(),
+  commission_producer: z.any().optional(),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -35,9 +37,15 @@ interface Photographer {
   full_name: string;
 }
 
+interface Producer {
+  id: string;
+  full_name: string;
+}
+
 export default function NewEventPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [photographers, setPhotographers] = useState<Photographer[]>([]);
+  const [producers, setProducers] = useState<Producer[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const router = useRouter();
@@ -52,6 +60,8 @@ export default function NewEventPage() {
       photo_price: 10.00,
       commission_rate: 0.10,
       photographer_id: '',
+      producer_id: '',
+      commission_producer: 15,
       title: '',
       event_date: '',
       location: '',
@@ -68,7 +78,15 @@ export default function NewEventPage() {
         .eq('role', 'PHOTOGRAPHER');
       if (data) setPhotographers(data);
     }
+    async function loadProducers() {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('role', 'PRODUCER');
+      if (data) setProducers(data);
+    }
     loadPhotographers();
+    loadProducers();
   }, [supabase]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -99,6 +117,8 @@ export default function NewEventPage() {
         photo_price: Number(data.photo_price),
         commission_rate: Number(data.commission_rate),
         photographer_id: data.photographer_id || null,
+        producer_id: data.producer_id || null,
+        commission_producer: Number(data.commission_producer) || 15,
         styles: typeof data.styles === 'string' ? data.styles.split(',').map((s: string) => s.trim()) : data.styles,
         slug,
       }])
@@ -223,6 +243,33 @@ export default function NewEventPage() {
                   <option key={p.id} value={p.id}>{p.full_name}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Marketplace: Produtor */}
+          <div className={styles.inputGroup} style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', marginBottom: '1.2rem', color: '#fff' }}>
+              <Wallet size={18} /> Marketplace do Produtor
+            </h3>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label>Produtor Responsável</label>
+              <select {...register('producer_id')} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: '#111', border: '1px solid #333', color: '#fff' }}>
+                <option value="">Nenhum (evento sem produtor vinculado)</option>
+                {producers.map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label>Comissão do Produtor (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                {...register('commission_producer')}
+                placeholder="Ex: 15 para 15%"
+              />
             </div>
           </div>
 

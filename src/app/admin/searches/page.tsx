@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server';
-import AdminNavbar from '@/components/AdminNavbar';
 import styles from '../dashboard.module.css';
 import { Search, Filter, Calendar, Activity, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -26,7 +25,6 @@ export default async function AdminSearchesPage() {
 
   return (
     <div className={styles.container}>
-      <AdminNavbar active="dashboard" />
       
       <header className={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

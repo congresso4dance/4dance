@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import * as faceapi from 'face-api.js';
 import { Brain, Cpu, CheckCircle, AlertCircle, Loader2, Play, Pause, Activity, RefreshCw } from 'lucide-react';
-import AdminNavbar from '@/components/AdminNavbar';
 import styles from './ai-worker.module.css';
 
 import { getPendingPhotos, markPhotoAsIndexed, resetAllIndexing } from '@/app/actions/ai-engine';
@@ -166,7 +165,6 @@ export default function GlobalAIWorker() {
 
   return (
     <div className={styles.container}>
-      <AdminNavbar active="settings" />
       
       <header className={styles.header}>
         <div className={styles.title}>

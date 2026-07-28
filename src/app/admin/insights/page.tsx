@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server';
-import AdminNavbar from '@/components/AdminNavbar';
 import styles from '../dashboard.module.css';
 import { Brain, Search, Users, Activity, Zap, DollarSign, TrendingDown, LayoutGrid } from 'lucide-react';
 import AnalyticsCharts from '@/components/AnalyticsCharts';
@@ -61,7 +60,6 @@ export default async function InsightsPage() {
 
   return (
     <div className={styles.container}>
-      <AdminNavbar active="insights" />
 
       <header className={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
