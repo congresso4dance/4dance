@@ -5,10 +5,10 @@ import { Database, Play, Pause, CheckCircle, AlertCircle, Loader2 } from 'lucide
 import AdminNavbar from '@/components/AdminNavbar';
 import styles from '../ai-worker/ai-worker.module.css';
 
-// Eventos "Samba ao Quadrado" escolhidos para a primeira leva de migração
-// (evento mais recente, o de maior volume acumulado no Supabase Storage).
+// Eventos "Samba ao Quadrado" escolhidos para a primeira leva de migração.
+// O evento-base "Samba ao Quadrado" (sem dia) ficou de fora a pedido do
+// usuário — é antigo e não precisa migrar agora.
 const TARGET_EVENTS = [
-  { id: '3d002919-f2c3-4f8b-8cd3-59950f14deb7', title: 'Samba ao Quadrado' },
   { id: 'b2d0653e-ff81-4115-b22e-4faeb94aa41b', title: 'Samba ao Quadrado - Domingo' },
   { id: '5e0be7a8-5417-44b6-aaa5-79633db44e4e', title: 'Samba ao Quadrado - Quinta' },
   { id: '745a0818-3a5c-4c8c-be54-ff1bc93de557', title: 'Samba ao Quadrado - Sabado' },
@@ -33,7 +33,7 @@ export default function R2MigrationPage() {
       const res = await fetch('/api/admin/migrate-photos-to-r2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventIds: TARGET_EVENTS.map(e => e.id), limit: 15 }),
+        body: JSON.stringify({ eventIds: TARGET_EVENTS.map(e => e.id), limit: 40 }),
       });
 
       const data = await res.json();
@@ -66,7 +66,7 @@ export default function R2MigrationPage() {
       }
 
       setStatus(`Migrando... faltam ${data.remaining} fotos.`);
-      setTimeout(runBatch, 300);
+      setTimeout(runBatch, 50);
     } catch (err: any) {
       addLog(`Falha de rede: ${err.message}. Tentando de novo em 5s...`, 'warning');
       setTimeout(runBatch, 5000);

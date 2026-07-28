@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const eventIds: string[] = Array.isArray(body.eventIds) ? body.eventIds : [];
-  const limit = Math.min(50, Math.max(1, Number(body.limit) || 15));
+  const limit = Math.min(50, Math.max(1, Number(body.limit) || 40));
 
   if (eventIds.length === 0) {
     return NextResponse.json({ error: 'eventIds é obrigatório' }, { status: 400 });
@@ -58,48 +58,65 @@ export async function POST(req: Request) {
     return NextResponse.json({ processed: 0, migrated: 0, errors: 0, remaining: 0, done: true });
   }
 
+  const photoBatch = photos;
+
   let migrated = 0;
   let errors = 0;
   const errorDetails: string[] = [];
 
-  for (const photo of photos) {
+  // Processa em paralelo (pool de workers) em vez de uma foto por vez — cada
+  // foto envolve vários round-trips de rede (download Supabase x2, upload R2
+  // x2, update DB), então rodar várias ao mesmo tempo usa muito melhor os 60s
+  // de execução da function na Vercel.
+  const CONCURRENCY = 8;
+  let nextIndex = 0;
+
+  async function migrateOne(photo: (typeof photoBatch)[number]) {
+    if (parseR2Ref(photo.full_res_url)) { return; } // já migrada, segurança extra
+
+    const fullKey: string = photo.storage_path;
+    const thumbKey: string = fullKey.replace(/\/full_/, '/thumb_');
+
+    const fullBuffer = await downloadFromSupabase(supabaseAdmin, fullKey);
+    await uploadToR2(fullKey, fullBuffer, 'image/jpeg');
+
+    // Nem toda foto antiga tem um thumb_ separado de verdade (algumas usam o
+    // próprio full_res_url como thumbnail_url). Se não achar um thumb_ com
+    // esse nome, usa o mesmo arquivo full como thumbnail no R2 também —
+    // ainda assim já sai da cota do Supabase, e pode ser reprocessado depois.
+    let thumbBuffer: Buffer;
     try {
-      if (parseR2Ref(photo.full_res_url)) { continue; } // já migrada, segurança extra
+      thumbBuffer = await downloadFromSupabase(supabaseAdmin, thumbKey);
+    } catch {
+      thumbBuffer = fullBuffer;
+    }
+    await uploadToR2(thumbKey, thumbBuffer, 'image/jpeg');
 
-      const fullKey: string = photo.storage_path;
-      const thumbKey: string = fullKey.replace(/\/full_/, '/thumb_');
+    const { error: updateError } = await supabaseAdmin
+      .from('photos')
+      .update({
+        full_res_url: toR2Ref(fullKey),
+        thumbnail_url: toR2Ref(thumbKey),
+      })
+      .eq('id', photo.id);
 
-      const fullBuffer = await downloadFromSupabase(supabaseAdmin, fullKey);
-      await uploadToR2(fullKey, fullBuffer, 'image/jpeg');
+    if (updateError) throw new Error(`DB update: ${updateError.message}`);
+  }
 
-      // Nem toda foto antiga tem um thumb_ separado de verdade (algumas usam o
-      // próprio full_res_url como thumbnail_url). Se não achar um thumb_ com
-      // esse nome, usa o mesmo arquivo full como thumbnail no R2 também —
-      // ainda assim já sai da cota do Supabase, e pode ser reprocessado depois.
-      let thumbBuffer: Buffer;
+  async function worker() {
+    while (nextIndex < photoBatch.length) {
+      const photo = photoBatch[nextIndex++];
       try {
-        thumbBuffer = await downloadFromSupabase(supabaseAdmin, thumbKey);
-      } catch {
-        thumbBuffer = fullBuffer;
+        await migrateOne(photo);
+        migrated++;
+      } catch (err: any) {
+        errors++;
+        errorDetails.push(`${photo.id}: ${err.message}`);
       }
-      await uploadToR2(thumbKey, thumbBuffer, 'image/jpeg');
-
-      const { error: updateError } = await supabaseAdmin
-        .from('photos')
-        .update({
-          full_res_url: toR2Ref(fullKey),
-          thumbnail_url: toR2Ref(thumbKey),
-        })
-        .eq('id', photo.id);
-
-      if (updateError) throw new Error(`DB update: ${updateError.message}`);
-
-      migrated++;
-    } catch (err: any) {
-      errors++;
-      errorDetails.push(`${photo.id}: ${err.message}`);
     }
   }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, photoBatch.length) }, worker));
 
   const { count: remaining } = await supabaseAdmin
     .from('photos')
@@ -108,7 +125,7 @@ export async function POST(req: Request) {
     .not('full_res_url', 'like', 'r2://%');
 
   return NextResponse.json({
-    processed: photos.length,
+    processed: photoBatch.length,
     migrated,
     errors,
     errorDetails: errorDetails.slice(0, 5),
