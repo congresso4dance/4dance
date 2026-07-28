@@ -75,6 +75,12 @@ export async function POST(req: Request) {
         .eq('id', orderId);
 
       // 2. Calculate and execute REVENUE SPLIT
+      // Um evento pode ter vários fotógrafos vinculados (dono + colaboradores
+      // que entraram via Oportunidades). Cada um ganha commission_photographer%
+      // só sobre as fotos que ELE MESMO tirou (photos.photographer_id) — não é
+      // uma divisão do pedido inteiro. Fotos sem photographer_id definido (ex:
+      // upload antigo do admin sem atribuição) caem no dono original do evento
+      // (event.photographer_id), pra não deixar ninguém sem receber.
       if (eventId) {
         try {
           const { data: event } = await supabase
@@ -83,36 +89,78 @@ export async function POST(req: Request) {
             .eq('id', eventId)
             .single();
 
-          if (event) {
+          const { data: order } = await supabase
+            .from('orders')
+            .select('items')
+            .eq('id', orderId)
+            .single();
+
+          const photoIds: string[] = order?.items || [];
+
+          if (event && photoIds.length > 0) {
             const amountTotal = session.amount_total || 0;
-            const photographerCut = Math.floor(amountTotal * (event.commission_photographer / 100));
-            const producerCut = Math.floor(amountTotal * (event.commission_producer / 100));
-            const platformCut = amountTotal - photographerCut - producerCut;
+            const perPhotoAmount = Math.floor(amountTotal / photoIds.length);
 
-            let photographerTransferId = null;
-            let producerTransferId = null;
+            const { data: photosSold } = await supabase
+              .from('photos')
+              .select('id, photographer_id')
+              .in('id', photoIds);
 
-            // Photographer Transfer
-            if (event.photographer_id) {
+            // Agrupa as fotos vendidas por fotógrafo responsável
+            const byPhotographer = new Map<string, number>();
+            for (const photoId of photoIds) {
+              const photo = photosSold?.find(p => p.id === photoId);
+              const responsibleId = photo?.photographer_id || event.photographer_id;
+              if (!responsibleId) continue;
+              byPhotographer.set(responsibleId, (byPhotographer.get(responsibleId) || 0) + perPhotoAmount);
+            }
+
+            let totalPhotographerCut = 0;
+            const splitRows: any[] = [];
+
+            for (const [photographerId, groupAmount] of byPhotographer.entries()) {
+              const photographerCut = Math.floor(groupAmount * (event.commission_photographer / 100));
+              totalPhotographerCut += photographerCut;
+
               const { data: photoProfile } = await supabase
                 .from('profiles')
                 .select('stripe_account_id')
-                .eq('id', event.photographer_id)
+                .eq('id', photographerId)
                 .single();
 
-              if (photoProfile?.stripe_account_id) {
+              let transferId: string | null = null;
+              if (photoProfile?.stripe_account_id && photographerCut > 0) {
                 const transfer = await stripe.transfers.create({
                   amount: photographerCut,
                   currency: 'brl',
                   destination: photoProfile.stripe_account_id,
-                  description: `Venda fotos Evento ${event.name}`,
-                  metadata: { orderId, eventId }
+                  description: `Venda fotos Evento ${event.name || event.title}`,
+                  metadata: { orderId, eventId, photographerId }
                 });
-                photographerTransferId = transfer.id;
+                transferId = transfer.id;
               }
+
+              splitRows.push({
+                order_id: orderId,
+                event_id: eventId,
+                total_amount: groupAmount / 100,
+                photographer_id: photographerId,
+                photographer_amount: photographerCut / 100,
+                producer_id: null,
+                producer_amount: 0,
+                platform_amount: 0,
+                status: transferId ? 'paid' : 'pending'
+              });
             }
 
-            // Producer Transfer
+            // Comissão do produtor e da plataforma continuam calculadas sobre
+            // o pedido inteiro, e ficam registradas numa linha própria (sem
+            // photographer_id) pra não duplicar total_amount/producer_amount
+            // quando o pedido tem mais de um fotógrafo envolvido.
+            const producerCut = Math.floor(amountTotal * (event.commission_producer / 100));
+            const platformCut = amountTotal - totalPhotographerCut - producerCut;
+
+            let producerTransferId: string | null = null;
             if (event.producer_id && producerCut > 0) {
               const { data: prodProfile } = await supabase
                 .from('profiles')
@@ -125,27 +173,26 @@ export async function POST(req: Request) {
                   amount: producerCut,
                   currency: 'brl',
                   destination: prodProfile.stripe_account_id,
-                  description: `Comissão Produtor Evento ${event.name}`,
+                  description: `Comissão Produtor Evento ${event.name || event.title}`,
                   metadata: { orderId, eventId }
                 });
                 producerTransferId = transfer.id;
               }
             }
 
-            // Record in revenue_splits
-            await supabase
-              .from('revenue_splits')
-              .insert({
-                order_id: orderId,
-                event_id: eventId,
-                total_amount: amountTotal / 100,
-                photographer_id: event.photographer_id,
-                photographer_amount: photographerCut / 100,
-                producer_id: event.producer_id,
-                producer_amount: producerCut / 100,
-                platform_amount: platformCut / 100,
-                status: (photographerTransferId || producerTransferId) ? 'paid' : 'pending'
-              });
+            splitRows.push({
+              order_id: orderId,
+              event_id: eventId,
+              total_amount: amountTotal / 100,
+              photographer_id: null,
+              photographer_amount: 0,
+              producer_id: event.producer_id,
+              producer_amount: producerCut / 100,
+              platform_amount: platformCut / 100,
+              status: (producerTransferId || platformCut >= 0) ? 'paid' : 'pending'
+            });
+
+            await supabase.from('revenue_splits').insert(splitRows);
           }
         } catch (splitErr) {
           console.error('❌ Erro no Revenue Split:', splitErr);

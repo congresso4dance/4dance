@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const formData = await req.formData();
   const fullFile = formData.get('full') as File | null;
   const eventId = formData.get('eventId') as string | null;
-  const photographerId = formData.get('photographerId') as string | null;
+  const photographerIdInput = formData.get('photographerId') as string | null;
   // O campo 'thumb' ainda pode chegar de clientes antigos, mas é ignorado:
   // o thumbnail de verdade agora é sempre gerado aqui no servidor a partir
   // do 'full', então nunca fica igual (ou maior) que a imagem cheia.
@@ -48,6 +48,28 @@ export async function POST(req: Request) {
   if (!fullFile || !eventId) {
     return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
   }
+
+  // Admin/owner/editor podem subir foto em qualquer evento e atribuir a
+  // qualquer fotógrafo. Um fotógrafo comum só pode subir pro evento se
+  // estiver vinculado a ele (dono ou colaborador aceito via Oportunidades) —
+  // sem essa checagem, qualquer conta de fotógrafo conseguia subir foto na
+  // pasta de QUALQUER evento, inclusive de outro fotógrafo.
+  if (role === 'photographer') {
+    const { data: link } = await supabaseAdmin
+      .from('event_photographers')
+      .select('photographer_id')
+      .eq('event_id', eventId)
+      .eq('photographer_id', user.id)
+      .maybeSingle();
+
+    if (!link) {
+      return NextResponse.json({ error: 'Você não está vinculado a este evento' }, { status: 403 });
+    }
+  }
+
+  // Por padrão a foto é atribuída a quem está enviando. Admin/editor podem
+  // sobrescrever escolhendo outro fotógrafo (ex: importador em lote).
+  const photographerId = role === 'photographer' ? user.id : (photographerIdInput || null);
 
   const supabase = supabaseAdmin;
   const baseName = `${Date.now()}-${Math.random().toString(36).slice(2)}`;

@@ -16,12 +16,28 @@ export default function PhotographerEvents() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Um evento pode ter vários fotógrafos vinculados (dono + colaboradores
+      // que entraram via Oportunidades) — a lista de "meus eventos" precisa
+      // considerar os dois casos, não só events.photographer_id (que só guarda
+      // o dono original).
+      const { data: links } = await supabase
+        .from('event_photographers')
+        .select('event_id')
+        .eq('photographer_id', user.id);
+
+      const eventIds = (links || []).map(l => l.event_id);
+      if (eventIds.length === 0) {
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
       const { data } = await supabase
         .from('events')
         .select('*')
-        .eq('photographer_id', user.id)
+        .in('id', eventIds)
         .order('event_date', { ascending: false });
-      
+
       if (data) setEvents(data);
       setLoading(false);
     }
@@ -32,7 +48,18 @@ export default function PhotographerEvents() {
 
   return (
     <div className={styles.eventsPage}>
-      <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Meus Eventos</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Meus Eventos</h2>
+        <Link
+          href="/portal-fotografo/eventos/novo"
+          style={{
+            background: '#ceac66', color: '#000', textDecoration: 'none', fontWeight: 700,
+            fontSize: '0.85rem', padding: '0.6rem 1.1rem', borderRadius: '10px',
+          }}
+        >
+          + Criar Evento
+        </Link>
+      </div>
 
       {events.length === 0 ? (
         <div style={{ 
@@ -44,7 +71,9 @@ export default function PhotographerEvents() {
         }}>
           <ImageIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
           <p style={{ opacity: 0.5 }}>Você ainda não possui eventos vinculados.</p>
-          <p style={{ fontSize: '0.85rem', opacity: 0.3 }}>Entre em contato com o administrador para ser atribuído a um evento.</p>
+          <p style={{ fontSize: '0.85rem', opacity: 0.3 }}>
+            Crie o seu próprio evento ou veja as <Link href="/portal-fotografo/oportunidades" style={{ color: '#ceac66' }}>oportunidades</Link> abertas por outros fotógrafos.
+          </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

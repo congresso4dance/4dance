@@ -54,36 +54,16 @@ export async function POST(req: Request) {
 
     if (orderError) throw orderError;
 
-    // 2. Fetch Event details for Split logic
-    const { data: event } = await supabase
-      .from('events')
-      .select('commission_rate, photographer_id')
-      .eq('id', eventId)
-      .single();
+    // O repasse pro fotógrafo/produtor/plataforma NÃO é feito aqui. Ele
+    // acontece depois, no webhook (checkout.session.completed), que já lê
+    // commission_photographer/commission_producer/commission_platform por
+    // evento e agora agrupa por fotógrafo individual (várias fotos do mesmo
+    // pedido podem ser de fotógrafos diferentes quando o evento tem mais de
+    // um). Fazer o split aqui também (via transfer_data) duplicava o
+    // pagamento pro fotógrafo — e usava um campo (commission_rate) que nem
+    // existe mais na tabela events.
 
-    let paymentIntentData: Stripe.Checkout.SessionCreateParams['payment_intent_data'] = {}
-    if (event?.photographer_id) {
-      const { data: photographer } = await supabase
-        .from('profiles')
-        .select('stripe_account_id, stripe_onboarding_complete')
-        .eq('id', event.photographer_id)
-        .single();
-
-      if (photographer?.stripe_account_id) {
-        const commissionRate = event.commission_rate ?? 10;
-        const photographerSharePercent = (100 - commissionRate) / 100;
-        const amountForPhotographer = Math.round(finalAmount * photographerSharePercent * 100);
-
-        paymentIntentData = {
-          transfer_data: {
-            destination: photographer.stripe_account_id,
-            amount: amountForPhotographer,
-          },
-        }
-      }
-    }
-
-    // 3. Create Stripe Session
+    // 2. Create Stripe Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'pix'],
       line_items: items.map((item: any) => ({
@@ -98,7 +78,6 @@ export async function POST(req: Request) {
         quantity: 1,
       })),
       mode: 'payment',
-      payment_intent_data: Object.keys(paymentIntentData).length ? paymentIntentData : undefined,
       success_url: `${req.headers.get('origin')}/minhas-fotos?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin')}/eventos?canceled=true`,
       metadata: {

@@ -12,17 +12,18 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [photographerId, setPhotographerId] = useState<string | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
     async function loadEvent() {
-      const { data } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
+      const [{ data: { user } }, { data }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('events').select('*').eq('id', id).single(),
+      ]);
+
+      if (user) setPhotographerId(user.id);
       if (data) setEvent(data);
       setLoading(false);
     }
@@ -46,6 +47,11 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
         fd.append('full', file);
         fd.append('thumb', file);
         fd.append('eventId', id);
+        // Sem isso, a foto sobe sem dono (photos.photographer_id fica null) e
+        // na hora de repassar o dinheiro da venda ninguém recebe o certo —
+        // a API já sabe atribuir ao usuário autenticado, mas mandamos
+        // explícito aqui pra não depender só do fallback do servidor.
+        if (photographerId) fd.append('photographerId', photographerId);
 
         const res = await fetch('/api/admin/upload-photo', {
           method: 'POST',
@@ -161,11 +167,11 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', padding: '1.2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ opacity: 0.5 }}>Sua Comissão</span>
-            <span style={{ fontWeight: 600, color: '#22c55e' }}>{100 - (event.commission_rate || 10)}%</span>
+            <span style={{ fontWeight: 600, color: '#22c55e' }}>{event.commission_photographer ?? 70}%</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ opacity: 0.5 }}>Plataforma</span>
-            <span style={{ fontWeight: 600 }}>{event.commission_rate || 10}%</span>
+            <span style={{ fontWeight: 600 }}>{event.commission_platform ?? 15}%</span>
           </div>
         </div>
       </div>

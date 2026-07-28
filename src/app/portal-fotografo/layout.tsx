@@ -4,16 +4,18 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  User, 
-  Wallet, 
-  Camera, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
+import {
+  User,
+  Wallet,
+  Camera,
+  BarChart3,
+  Settings,
+  LogOut,
   ChevronRight,
   Share2,
-  LayoutDashboard
+  LayoutDashboard,
+  PlusCircle,
+  Users
 } from 'lucide-react';
 import styles from './fotografo.module.css';
 
@@ -60,6 +62,8 @@ export default function PhotographerLayout({ children }: { children: React.React
   const menuItems = [
     { label: 'Painel Geral', icon: LayoutDashboard, href: '/portal-fotografo' },
     { label: 'Meus Eventos', icon: Camera, href: '/portal-fotografo/eventos' },
+    { label: 'Criar Evento', icon: PlusCircle, href: '/portal-fotografo/eventos/novo' },
+    { label: 'Oportunidades', icon: Users, href: '/portal-fotografo/oportunidades' },
     { label: 'Estatísticas de uso', icon: BarChart3, href: '/portal-fotografo/estatisticas' },
     { label: 'Artes de divulgação', icon: Share2, href: '/portal-fotografo/divulgacao' },
     // "Meu site" (/portal-fotografo/site) ainda é só um placeholder "Em
