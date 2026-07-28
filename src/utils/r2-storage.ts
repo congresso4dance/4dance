@@ -37,6 +37,11 @@ export function getR2Client(): S3Client {
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
+    // O SDK novo da AWS manda por padrão um header/query de checksum
+    // (x-amz-checksum-mode) que o Cloudflare R2 não suporta direito e
+    // responde com 503. Desligando isso, a assinatura fica compatível.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   });
 
   return cachedClient;
