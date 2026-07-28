@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AIIndexer from '@/components/AIIndexer';
+import NumberIndexer from '@/components/NumberIndexer';
 import styles from '../edit-event.module.css';
 import { signDisplayPhotos } from '@/app/actions/storage-actions';
 import { indexEventPhotos } from '@/utils/face-indexing';
@@ -266,6 +267,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       </header>
 
       <AIIndexer eventId={id} />
+      <NumberIndexer eventId={id} />
 
       <form onSubmit={handleSubmit(onSubmit)} className={styles.formSection}>
         <div className={styles.formGrid}>

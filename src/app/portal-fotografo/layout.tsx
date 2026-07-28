@@ -15,7 +15,8 @@ import {
   Share2,
   LayoutDashboard,
   PlusCircle,
-  Users
+  Users,
+  Globe
 } from 'lucide-react';
 import styles from './fotografo.module.css';
 
@@ -66,10 +67,7 @@ export default function PhotographerLayout({ children }: { children: React.React
     { label: 'Oportunidades', icon: Users, href: '/portal-fotografo/oportunidades' },
     { label: 'Estatísticas de uso', icon: BarChart3, href: '/portal-fotografo/estatisticas' },
     { label: 'Artes de divulgação', icon: Share2, href: '/portal-fotografo/divulgacao' },
-    // "Meu site" (/portal-fotografo/site) ainda é só um placeholder "Em
-    // Construção" — tirado do menu até a feature existir de verdade, pra não
-    // ser um beco sem saída pro fotógrafo. A rota continua no ar, só não é
-    // mais linkada daqui.
+    { label: 'Meu Site', icon: Globe, href: '/portal-fotografo/site' },
     { label: 'Configurações', icon: Settings, href: '/portal-fotografo/configuracoes' },
   ];
 

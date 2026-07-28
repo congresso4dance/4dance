@@ -84,6 +84,7 @@ BEGIN
   END IF;
 END $$;
 
--- 5. Log de auditoria (segue o padrão das outras migrações do projeto)
-INSERT INTO public.audit_logs (action, table_name, metadata)
-VALUES ('EVENT_PHOTOGRAPHERS_MIGRATION', 'event_photographers', jsonb_build_object('version', '1.0.0', 'features', 'multi_photographer_events, marketplace_opportunities'));
+-- Nota: a tabela audit_logs real deste projeto não tem coluna "metadata"
+-- (diferente do que a migração ecosystem_upgrade_v2.sql supunha), então o
+-- log de auditoria automático foi removido daqui pra não quebrar a migração
+-- inteira por causa de um INSERT que é só cosmético.

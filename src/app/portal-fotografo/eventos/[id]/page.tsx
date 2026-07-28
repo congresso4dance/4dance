@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import styles from '../../fotografo.module.css';
 import { Camera, Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import NumberIndexer from '@/components/NumberIndexer';
 
 export default function PhotographerEventDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -159,6 +160,10 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
             {uploadStatus}
           </div>
         )}
+      </div>
+
+      <div style={{ marginTop: '2.5rem' }}>
+        <NumberIndexer eventId={id} />
       </div>
 
       {/* Quick Stats for Event */}

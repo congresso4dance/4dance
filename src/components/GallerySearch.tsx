@@ -7,6 +7,7 @@ import styles from "./GallerySearch.module.css";
 import { motion, AnimatePresence } from "framer-motion";
 import * as faceapi from 'face-api.js';
 import { trackActivity } from "@/app/actions/crm-actions";
+import { searchPhotosByBibNumber } from "@/app/actions/number-detection";
 
 type GalleryPhoto = {
   id: string;
@@ -257,17 +258,44 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
-  const handleTextSearch = (query: string) => {
-    if (!query || query.trim() === "") {
+  const [numberSearching, setNumberSearching] = useState(false);
+
+  const handleTextSearch = async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
       onFilter(null);
+      setStatus("");
       return;
     }
-    
+
+    // Número de competidor (bib number) — busca no evento inteiro via
+    // servidor, não só nas fotos já carregadas na tela. Detecta se a busca é
+    // puramente numérica (o jeito como número de peito costuma ser digitado).
+    if (/^\d+$/.test(trimmed)) {
+      setNumberSearching(true);
+      setStatus("Buscando pelo número...");
+      try {
+        const result = await searchPhotosByBibNumber(eventId, trimmed);
+        if (result.photos.length > 0) {
+          onFilter(result.photos as GalleryPhoto[]);
+          setStatus(`Encontramos ${result.photos.length} foto(s) com o número ${trimmed}. 🔢`);
+        } else {
+          onFilter([]);
+          setStatus(`Nenhuma foto com o número ${trimmed} ainda.`);
+        }
+      } catch (err) {
+        console.error("Erro na busca por número:", err);
+        setStatus("Erro ao buscar por número.");
+      }
+      setNumberSearching(false);
+      return;
+    }
+
     setStatus("");
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = trimmed.toLowerCase();
     const filtered = photos
       .filter((photo) => photo.full_res_url?.toLowerCase().includes(lowerQuery));
-    
+
     onFilter(filtered);
   };
 
@@ -304,11 +332,12 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
         <div className={styles.searchMethods}>
           <div className={styles.textSearchWrapper}>
             <Search className={styles.searchIcon} size={18} />
-            <input 
-              type="text" 
-              placeholder="Busque por nome do arquivo (ex: DSC_01)..." 
+            <input
+              type="text"
+              placeholder="Busque pelo número do competidor ou nome do arquivo..."
               className={styles.textInput}
-              onChange={(e) => handleTextSearch(e.target.value)}
+              onChange={(e) => { void handleTextSearch(e.target.value); }}
+              disabled={numberSearching}
             />
           </div>
 

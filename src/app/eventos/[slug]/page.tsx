@@ -86,12 +86,35 @@ export default async function EventGalleryPage({ params }: Props) {
     : '*';
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: rawPhotos, count: totalPhotosCount, error: photosError } = await supabaseAdmin
-    .from('photos')
-    .select(photoFields, { count: 'exact' })
-    .eq('event_id', event.id)
-    .order('created_at', { ascending: true })
-    .range(0, 299);
+
+  // Eventos grandes (700+ fotos) ficavam com a galeria cortada porque aqui só
+  // buscava as primeiras 300 (.range(0, 299)) — o resto das fotos existia no
+  // banco mas nunca chegava na página. Busca em lotes até trazer tudo, sem
+  // depender do fetch de "carregar mais" no scroll (que fica só como reforço
+  // de UX, não como a única forma de ver a galeria inteira).
+  const PAGE_SIZE = 900;
+  let rawPhotos: Record<string, unknown>[] = [];
+  let totalPhotosCount = 0;
+  let photosError: unknown = null;
+
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data: batch, count, error: batchError } = await supabaseAdmin
+      .from('photos')
+      .select(photoFields, { count: 'exact' })
+      .eq('event_id', event.id)
+      .order('created_at', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (batchError) {
+      photosError = batchError;
+      break;
+    }
+
+    totalPhotosCount = count ?? totalPhotosCount;
+    rawPhotos = rawPhotos.concat((batch || []) as Record<string, unknown>[]);
+
+    if (!batch || batch.length < PAGE_SIZE) break;
+  }
 
   // Para eventos pagos, usar thumbnail_url como full_res_url público (HD só via download seguro)
   if (photosError) {

@@ -80,7 +80,7 @@ export default function PhotographerEvents() {
           {events.map((event) => (
             <Link 
               key={event.id} 
-              href={`/fotografo/eventos/${event.id}`}
+              href={`/portal-fotografo/eventos/${event.id}`}
               style={{ 
                 textDecoration: 'none', 
                 color: 'inherit',
