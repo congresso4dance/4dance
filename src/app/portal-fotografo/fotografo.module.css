@@ -1,11 +1,209 @@
-.container {
+/* Shell: sidebar fixa + área de conteúdo (estilo /admin) */
+.layout {
+  display: flex;
   min-height: 100vh;
-  background-color: #000;
+  background: #000;
   color: #fff;
-  padding: 1rem;
-  max-width: 600px;
-  margin: 0 auto;
   font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #050505;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebarHeader {
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.logoBadge {
+  background: linear-gradient(135deg, #ceac66, #e6c98a);
+  color: #000;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.sidebarHeader h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: white;
+}
+
+.nav {
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.navLink {
+  padding: 0.75rem 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+.navLink.active {
+  background: rgba(206, 172, 102, 0.1);
+  color: #ceac66;
+}
+
+.chevron {
+  margin-left: auto;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.2s ease;
+  color: #ceac66;
+}
+
+.navLink:hover .chevron,
+.navLink.active .chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sidebarFooter {
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.upgradeBtn {
+  display: block;
+  text-align: center;
+  background: transparent;
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.6rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.upgradeBtn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.externalLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  margin-bottom: 1rem;
+  transition: color 0.2s ease;
+}
+
+.externalLink:hover {
+  color: #ceac66;
+}
+
+.userProfile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 0.75rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #ceac66, #e6c98a);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #000;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.userName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.userRole {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 3px 0 0;
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 0.85rem;
+  text-align: left;
+  padding: 0.6rem 0.25rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.main {
+  flex: 1;
+  padding: 2.5rem;
+  overflow-y: auto;
+  background: #000;
+  min-height: 100vh;
+  min-width: 0;
 }
 
 .loading {
@@ -16,120 +214,12 @@
   color: #ceac66;
 }
 
-.userHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 1.5rem;
+/* Classes usadas dentro das páginas filhas (Painel Geral, eventos/[id], etc.) */
+.container {
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.avatar {
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(135deg, #ceac66, #e6c98a);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #000;
-}
-
-.userName {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.userRole {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.5);
-  margin: 4px 0 0;
-}
-
-.upgradeBtn {
-  background: transparent;
-  color: #3b82f6;
-  border: none;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0;
-}
-
-.mainContent {
-  padding-bottom: 2rem;
-}
-
-.navMenu {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 1.5rem;
-}
-
-.menuSection {
-  display: flex;
-  flex-direction: column;
-}
-
-.menuItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.2rem 0;
-  text-decoration: none;
-  color: rgba(255, 255, 255, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-.menuItem:hover {
-  background-color: rgba(255, 255, 255, 0.03);
-  padding-left: 8px;
-}
-
-.menuItemLabel {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 1.05rem;
-  font-weight: 400;
-}
-
-.menuIcon {
-  opacity: 0.6;
-}
-
-.chevron {
-  opacity: 0.4;
-}
-
-.logoutBtn {
-  margin-top: 2rem;
-  background: transparent;
-  border: none;
-  color: #ef4444;
-  font-size: 1.1rem;
-  text-align: left;
-  padding: 1rem 0;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-/* Dashboard Specific Styles (to be used in page.tsx) */
 .walletCard {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
@@ -185,4 +275,27 @@
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+  .main {
+    padding: 2rem 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+  .main {
+    padding: 1.25rem;
+  }
 }

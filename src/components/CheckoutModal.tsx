@@ -70,7 +70,7 @@ export default function CheckoutModal({ isOpen, onClose, items, total, savings, 
     <AnimatePresence>
       <div
         className={styles.lightboxOverlay}
-        style={{ zIndex: 3000, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)' }}
+        style={{ zIndex: 6000, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)' }}
         onClick={onClose}
       >
         <motion.div

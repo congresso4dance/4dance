@@ -217,7 +217,7 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
           setDisplayLimit(prev => prev + 24);
         } else if (!filteredPhotos && allPhotos.length < totalPhotosCount && !isFetchingMore) {
           setIsFetchingMore(true);
-          fetch(`/api/events/${event.id}/photos?offset=${allPhotos.length}&limit=200&is_paid=${event.is_paid ? 'true' : 'false'}`)
+          fetch(`/api/events/${event.id}/photos?offset=${allPhotos.length}&limit=200`)
             .then(r => r.json())
             .then(({ photos: more }: { photos: GalleryPhoto[] }) => {
               if (more?.length) {
@@ -418,14 +418,19 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
             Favoritas ({favorites.length})
           </button>
           
-          <button 
-            className={`${styles.cartFloatingBtn} ${count > 0 ? styles.hasItems : ''}`}
-            onClick={() => setShowCart(true)}
-          >
-            <ShoppingCart size={20} />
-            {count > 0 && <span className={styles.cartBadge}>{count}</span>}
-            <span className={styles.cartText}>Ver Carrinho (R$ {total.toFixed(2)})</span>
-          </button>
+          {/* Carrinho só faz sentido em eventos pagos (compra de fotos em HD).
+              Em eventos gratuitos as fotos são baixadas direto, então mostrar
+              um botão de carrinho sempre vazio só confundia o cliente. */}
+          {event.is_paid && (
+            <button
+              className={`${styles.cartFloatingBtn} ${count > 0 ? styles.hasItems : ''}`}
+              onClick={() => setShowCart(true)}
+            >
+              <ShoppingCart size={20} />
+              {count > 0 && <span className={styles.cartBadge}>{count}</span>}
+              <span className={styles.cartText}>Ver Carrinho (R$ {total.toFixed(2)})</span>
+            </button>
+          )}
         </div>
       </div>
       

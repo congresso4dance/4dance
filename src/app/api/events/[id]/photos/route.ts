@@ -15,9 +15,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { searchParams } = new URL(req.url);
   const offset = Math.max(0, parseInt(searchParams.get('offset') || '0'));
   const limit = Math.min(300, Math.max(1, parseInt(searchParams.get('limit') || '200')));
-  const isPaid = searchParams.get('is_paid') === 'true';
 
   const supabase = getSupabaseAdmin();
+
+  // 🔒 Segurança: "is_paid" tinha que vir de query param mandado pelo próprio
+  // navegador — ou seja, qualquer um podia chamar essa rota com
+  // "is_paid=false" pra um evento pago de verdade e receber o full_res_url
+  // original (sem marca d'água, em alta resolução) de graça, pulando o
+  // paywall inteiro. Agora a gente busca o is_paid real do evento aqui no
+  // servidor, direto do banco — o valor não pode ser forjado pelo cliente.
+  const { data: eventRow } = await supabase
+    .from('events')
+    .select('is_paid')
+    .eq('id', id)
+    .single();
+  const isPaid = Boolean(eventRow?.is_paid);
+
   const photoFields = isPaid ? 'id,event_id,thumbnail_url,storage_path,created_at' : '*';
 
   const { data: rawPhotos } = await supabase

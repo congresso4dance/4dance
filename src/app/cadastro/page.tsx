@@ -69,11 +69,17 @@ function SignupForm() {
       }
 
       // 3. Send Premium Welcome Email
+      // Manda o userId junto: a API valida no servidor (via Admin API do
+      // Supabase) que esse id realmente existe e que o e-mail bate com o da
+      // conta — sem isso, a rota aceitava qualquer endereço de e-mail vindo
+      // do corpo da requisição, virando um mini relay de spam pra quem
+      // chamasse a API direto, fora do fluxo de cadastro.
       try {
         await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            userId: authData.user.id,
             email,
             type: 'welcome',
             username: fullName.split(' ')[0],
