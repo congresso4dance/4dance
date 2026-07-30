@@ -56,6 +56,82 @@ export async function POST(req: Request) {
   // Handle Event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
+
+    // Pedido de VÍDEO (piloto): fluxo separado e mais simples do que o de
+    // fotos — um vídeo só tem um fotógrafo responsável, então não precisa
+    // agrupar por fotógrafo como acontece com o carrinho de fotos.
+    if (session.metadata?.type === 'video') {
+      const videoOrderId = session.metadata?.videoOrderId;
+      const eventId = session.metadata?.eventId;
+      const videoId = session.metadata?.videoId;
+
+      if (videoOrderId) {
+        await supabase.from('video_orders').update({ status: 'paid' }).eq('id', videoOrderId);
+
+        try {
+          const amountTotal = session.amount_total || 0;
+
+          const { data: video } = await supabase
+            .from('videos')
+            .select('photographer_id')
+            .eq('id', videoId)
+            .single();
+
+          const { data: eventRow } = eventId
+            ? await supabase.from('events').select('*').eq('id', eventId).single()
+            : { data: null };
+
+          const responsibleId = video?.photographer_id || eventRow?.photographer_id;
+
+          if (eventRow && responsibleId) {
+            const photographerCut = Math.floor(amountTotal * ((eventRow.commission_photographer ?? 70) / 100));
+
+            const { data: photographerProfile } = await supabase
+              .from('profiles')
+              .select('stripe_account_id')
+              .eq('id', responsibleId)
+              .single();
+
+            let transferId: string | null = null;
+            if (photographerProfile?.stripe_account_id && photographerCut > 0) {
+              const transfer = await stripe.transfers.create({
+                amount: photographerCut,
+                currency: 'brl',
+                destination: photographerProfile.stripe_account_id,
+                description: `Venda de vídeo - ${eventRow.name || eventRow.title}`,
+                metadata: { videoOrderId, eventId: eventId || '', photographerId: responsibleId },
+              });
+              transferId = transfer.id;
+            }
+
+            await supabase.from('revenue_splits').insert({
+              order_id: videoOrderId,
+              event_id: eventId,
+              total_amount: amountTotal / 100,
+              photographer_id: responsibleId,
+              photographer_amount: photographerCut / 100,
+              producer_id: null,
+              producer_amount: 0,
+              platform_amount: (amountTotal - photographerCut) / 100,
+              status: transferId ? 'paid' : 'pending',
+            });
+          }
+        } catch (splitErr) {
+          console.error('❌ Erro no split de vídeo:', splitErr);
+        }
+
+        const customerEmail = session.customer_details?.email;
+        if (customerEmail) {
+          await trackActivityInternal(customerEmail, 'PURCHASE', undefined, {
+            video_order_id: videoOrderId,
+            amount: (session.amount_total || 0) / 100,
+          });
+        }
+      }
+
+      return NextResponse.json({ received: true });
+    }
+
     const orderId = session.metadata?.orderId;
     const customerEmail = session.customer_details?.email;
     const customerName = session.customer_details?.name || 'Bailarino(a)';

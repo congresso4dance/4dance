@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectsCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
@@ -100,6 +100,33 @@ export async function getR2SignedUrl(key: string, expiresIn = 21600, downloadFil
       : {}),
   });
   return getSignedUrl(client, command, { expiresIn });
+}
+
+/**
+ * Gera uma URL assinada temporária (PUT) para o navegador subir um arquivo
+ * DIRETO pro R2, sem passar pelo nosso servidor. Necessário pra vídeo: uma
+ * function do Vercel tem limite de ~4.5MB de payload, o que quebraria o
+ * upload de qualquer vídeo real se ele passasse pela nossa API como as fotos.
+ */
+export async function getR2UploadUrl(key: string, contentType: string, expiresIn = 900): Promise<string> {
+  const client = getR2Client();
+  const command = new PutObjectCommand({
+    Bucket: getBucketName(),
+    Key: key,
+    ContentType: contentType,
+  });
+  return getSignedUrl(client, command, { expiresIn });
+}
+
+/** Busca metadados (ex: tamanho) de um objeto no R2 sem baixar o conteúdo. */
+export async function headR2Object(key: string): Promise<{ contentLength?: number; contentType?: string } | null> {
+  const client = getR2Client();
+  try {
+    const result = await client.send(new HeadObjectCommand({ Bucket: getBucketName(), Key: key }));
+    return { contentLength: result.ContentLength, contentType: result.ContentType };
+  } catch {
+    return null;
+  }
 }
 
 /**

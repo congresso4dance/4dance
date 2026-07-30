@@ -5,6 +5,10 @@
 
 export const BASE_PHOTO_PRICE = 10.00;
 
+// Preço fixo do piloto de vídeo — igual pra qualquer fotógrafo/evento, sem
+// desconto progressivo (diferente das fotos).
+export const VIDEO_PRICE_BRL = 15;
+
 export function calculateUnitPrice(count: number): number {
   if (count >= 20) return 7.00;  // 30% discount
   if (count >= 10) return 8.00;  // 20% discount

@@ -6,7 +6,9 @@ import styles from './gallery.module.css';
 import { Metadata } from 'next';
 // import Image from 'next/image';
 import GalleryContent from '@/components/GalleryContent';
+import VideoGallery from '@/components/VideoGallery';
 import { signPhotoUrls, signSingleUrl, getSupabaseAdmin } from '@/utils/storage-helper';
+import { VIDEO_PRICE_BRL } from '@/utils/pricing';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -146,6 +148,25 @@ export default async function EventGalleryPage({ params }: Props) {
     ? galleryPhotos.map((photo) => ({ ...photo, full_res_url: photo.thumbnail_url }))
     : galleryPhotos;
 
+  // 3. Fetch Videos (piloto) — venda separada das fotos, preço fixo.
+  const { data: videos } = await supabaseAdmin
+    .from('videos')
+    .select('id, title')
+    .eq('event_id', event.id)
+    .order('created_at', { ascending: true });
+
+  let purchasedVideoIds: string[] = [];
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (currentUser && videos && videos.length > 0) {
+    const { data: paidOrders } = await supabaseAdmin
+      .from('video_orders')
+      .select('video_id')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'paid')
+      .in('video_id', videos.map((v) => v.id));
+    purchasedVideoIds = (paidOrders || []).map((o) => o.video_id);
+  }
+
   return (
     <main className={styles.main}>
       <Navbar />
@@ -188,6 +209,7 @@ export default async function EventGalleryPage({ params }: Props) {
       <section className={styles.gallerySection}>
         <div className={styles.container}>
           <GalleryContent event={eventWithSignedCover} photos={photos || []} totalPhotosCount={totalPhotosCount ?? photos?.length ?? 0} />
+          <VideoGallery videos={videos || []} purchasedVideoIds={purchasedVideoIds} price={VIDEO_PRICE_BRL} />
         </div>
       </section>
     </main>

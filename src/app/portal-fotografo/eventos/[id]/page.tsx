@@ -14,6 +14,8 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [photographerId, setPhotographerId] = useState<string | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoStatus, setVideoStatus] = useState<string>('');
   const supabase = createClient();
   const router = useRouter();
 
@@ -73,6 +75,50 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
       setUploadStatus('Erro no envio das imagens.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVideo(true);
+    setVideoStatus('Preparando envio...');
+    try {
+      // 1. Pede uma URL pré-assinada e sobe o arquivo DIRETO pro R2 (não passa
+      // pela nossa function, que tem limite de payload pequeno demais pra vídeo).
+      const urlRes = await fetch('/api/videographer/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: id, contentType: file.type || 'video/mp4' }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) throw new Error(urlData.error || 'Erro ao preparar upload');
+
+      setVideoStatus(`Enviando vídeo (${(file.size / (1024 * 1024)).toFixed(1)}MB)...`);
+      const putRes = await fetch(urlData.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'video/mp4' },
+        body: file,
+      });
+      if (!putRes.ok) throw new Error('Falha no envio do arquivo pro storage');
+
+      setVideoStatus('Finalizando...');
+      const confirmRes = await fetch('/api/videographer/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: id, key: urlData.key, photographerId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || 'Erro ao salvar vídeo');
+
+      setVideoStatus('Vídeo enviado com sucesso!');
+      setTimeout(() => setVideoStatus(''), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setVideoStatus(`Erro: ${err.message || 'falha no envio do vídeo'}`);
+    } finally {
+      setUploadingVideo(false);
     }
   };
 
@@ -160,6 +206,56 @@ export default function PhotographerEventDetail({ params }: { params: Promise<{ 
             {uploadStatus}
           </div>
         )}
+      </div>
+
+      {/* Upload de Vídeo (piloto) — mesmo evento, item vendido separado por R$15 fixo */}
+      <div style={{ marginTop: '2rem' }}>
+        <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Vídeos (novo)</h3>
+        <p style={{ opacity: 0.5, fontSize: '0.85rem', marginBottom: '1rem' }}>
+          Vídeos são vendidos separado das fotos, por um valor fixo de R$ 15 cada.
+        </p>
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '2px dashed rgba(255,255,255,0.1)',
+          borderRadius: '24px',
+          padding: '2rem',
+          textAlign: 'center',
+          position: 'relative'
+        }}>
+          {uploadingVideo ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+              <Loader2 className={styles.spin} size={36} color="#ceac66" />
+              <p style={{ fontWeight: 600 }}>{videoStatus}</p>
+            </div>
+          ) : (
+            <>
+              <Upload size={28} color="#ceac66" style={{ marginBottom: '0.75rem' }} />
+              <p style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Clique para enviar um vídeo</p>
+              <p style={{ fontSize: '0.8rem', opacity: 0.4 }}>Formato: MP4</p>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={handleVideoUpload}
+                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+              />
+            </>
+          )}
+
+          {videoStatus && !uploadingVideo && (
+            <div style={{
+              marginTop: '1rem',
+              color: videoStatus.includes('Erro') ? '#ef4444' : '#22c55e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '0.9rem'
+            }}>
+              {videoStatus.includes('Erro') ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+              {videoStatus}
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ marginTop: '2.5rem' }}>
