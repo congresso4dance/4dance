@@ -451,11 +451,19 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         )}
         <div className={styles.sectionHeader}>
           <h2>Gerenciar Fotos ({photos.length})</h2>
-          <label className={styles.uploadBtn}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <label
+              className={styles.uploadBtn}
+              style={{ background: 'transparent', border: '1px solid #ceac66', color: '#ceac66', opacity: uploadingVideo ? 0.6 : 1, pointerEvents: uploadingVideo ? 'none' : 'auto' }}
+            >
+              <input type="file" accept="video/*" onChange={handleVideoUpload} />
+              {uploadingVideo ? 'Enviando vídeo...' : 'Upload de Vídeo'}
+            </label>
+            <label className={styles.uploadBtn}>
             <input
               type="file"
               multiple
-              accept="image/*" 
+              accept="image/*"
               onChange={async (e) => {
                 const files = e.target.files;
                 if (!files || files.length === 0) return;
@@ -524,8 +532,14 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               }}
             />
             Upload de Fotos
-          </label>
+            </label>
+          </div>
         </div>
+        {videoStatus && (
+          <p style={{ margin: '0.5rem 0 0', color: videoStatus.includes('Erro') ? '#f87171' : '#22c55e', fontSize: '0.9rem' }}>
+            {videoStatus}
+          </p>
+        )}
 
         <div className={styles.photoGrid}>
           {photos.map((photo) => (
@@ -559,25 +573,6 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             </div>
           </div>
         )}
-      </section>
-
-      {/* Upload de Vídeo (piloto) — vendido separado das fotos, R$15 fixo */}
-      <section className={styles.photoManagement} style={{ marginTop: '2rem' }}>
-        <div className={styles.sectionHeader}>
-          <h2>Vídeos (novo)</h2>
-          <label className={styles.uploadBtn} style={{ opacity: uploadingVideo ? 0.6 : 1, pointerEvents: uploadingVideo ? 'none' : 'auto' }}>
-            <input type="file" accept="video/*" onChange={handleVideoUpload} />
-            {uploadingVideo ? 'Enviando...' : 'Upload de Vídeo'}
-          </label>
-        </div>
-        {videoStatus && (
-          <p style={{ marginTop: '0.5rem', color: videoStatus.includes('Erro') ? '#f87171' : '#22c55e', fontSize: '0.9rem' }}>
-            {videoStatus}
-          </p>
-        )}
-        <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '0.5rem' }}>
-          Vídeos são vendidos separado das fotos, por R$ 15 fixo cada.
-        </p>
       </section>
     </div>
   );
