@@ -61,6 +61,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0, errors: 0 });
   const [isIndexing, setIsIndexing] = useState(false);
   const [indexProgress, setIndexProgress] = useState({ done: 0, total: 0 });
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoStatus, setVideoStatus] = useState<string>('');
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { toasts, showToast, removeToast } = useToast();
@@ -253,6 +255,50 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     }
   };
 
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVideo(true);
+    setVideoStatus('Preparando envio...');
+    try {
+      const urlRes = await fetch('/api/videographer/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: id, contentType: file.type || 'video/mp4' }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) throw new Error(urlData.error || 'Erro ao preparar upload');
+
+      setVideoStatus(`Enviando vídeo (${(file.size / (1024 * 1024)).toFixed(1)}MB)...`);
+      const putRes = await fetch(urlData.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'video/mp4' },
+        body: file,
+      });
+      if (!putRes.ok) throw new Error('Falha no envio do arquivo pro storage');
+
+      setVideoStatus('Finalizando...');
+      const confirmRes = await fetch('/api/videographer/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: id, key: urlData.key }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || 'Erro ao salvar vídeo');
+
+      setVideoStatus('Vídeo enviado com sucesso!');
+      showToast('✅ Vídeo enviado com sucesso!', 'success');
+      setTimeout(() => setVideoStatus(''), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setVideoStatus(`Erro: ${err.message || 'falha no envio do vídeo'}`);
+      showToast(`❌ ${err.message || 'Erro ao enviar vídeo'}`, 'error');
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
 
   if (loading) return <div className={styles.container}>Carregando...</div>;
 
@@ -513,6 +559,25 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             </div>
           </div>
         )}
+      </section>
+
+      {/* Upload de Vídeo (piloto) — vendido separado das fotos, R$15 fixo */}
+      <section className={styles.photoManagement} style={{ marginTop: '2rem' }}>
+        <div className={styles.sectionHeader}>
+          <h2>Vídeos (novo)</h2>
+          <label className={styles.uploadBtn} style={{ opacity: uploadingVideo ? 0.6 : 1, pointerEvents: uploadingVideo ? 'none' : 'auto' }}>
+            <input type="file" accept="video/*" onChange={handleVideoUpload} />
+            {uploadingVideo ? 'Enviando...' : 'Upload de Vídeo'}
+          </label>
+        </div>
+        {videoStatus && (
+          <p style={{ marginTop: '0.5rem', color: videoStatus.includes('Erro') ? '#f87171' : '#22c55e', fontSize: '0.9rem' }}>
+            {videoStatus}
+          </p>
+        )}
+        <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '0.5rem' }}>
+          Vídeos são vendidos separado das fotos, por R$ 15 fixo cada.
+        </p>
       </section>
     </div>
   );
