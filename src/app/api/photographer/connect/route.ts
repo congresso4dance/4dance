@@ -5,9 +5,7 @@ import Stripe from 'stripe';
 let stripeInstance: Stripe | null = null;
 function getStripe() {
   if (!stripeInstance) {
-    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2025-01-27-acacia' as any,
-    });
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY!);
   }
   return stripeInstance;
 }
