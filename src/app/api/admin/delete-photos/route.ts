@@ -8,38 +8,34 @@ export async function POST(req: Request) {
   const supabaseUser = await createClient();
   const { data: { user } } = await supabaseUser.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: profile } = await supabaseUser
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
+  const admin = getSupabaseAdmin();
+  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
   const role = profile?.role?.toLowerCase();
-  if (!['admin', 'owner', 'photographer', 'editor'].includes(role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!['admin', 'owner', 'photographer', 'editor'].includes(role ?? '')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const body: unknown = await req.json().catch(() => null);
+  const photoIds = typeof body === 'object' && body !== null && 'photoIds' in body && Array.isArray(body.photoIds)
+    ? body.photoIds.filter((id): id is string => typeof id === 'string').slice(0, 500)
+    : [];
+  if (photoIds.length === 0) return NextResponse.json({ error: 'Missing photoIds' }, { status: 400 });
+
+  const { data: photos, error: photoError } = await admin.from('photos').select('id,event_id,storage_path').in('id', photoIds);
+  if (photoError || !photos || photos.length !== new Set(photoIds).size) return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 });
+
+  if (role === 'photographer') {
+    const eventIds = [...new Set(photos.map((photo) => photo.event_id))];
+    const { data: links } = await admin.from('event_photographers').select('event_id').eq('photographer_id', user.id).in('event_id', eventIds);
+    const allowed = new Set((links ?? []).map((link) => link.event_id));
+    if (eventIds.some((eventId) => !allowed.has(eventId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { paths } = await req.json() as { paths: string[] };
-  if (!Array.isArray(paths) || paths.length === 0) {
-    return NextResponse.json({ error: 'Missing paths' }, { status: 400 });
-  }
-
-  // Tenta remover do R2 (fotos novas) e do Supabase Storage legado (fotos
-  // ainda não migradas). Um objeto ausente em um dos dois não é erro.
-  const results = await Promise.allSettled([
+  const paths = photos.map((photo) => photo.storage_path).filter((path): path is string => Boolean(path));
+  const storageResults = await Promise.allSettled([
     deleteFromR2(paths),
-    (async () => {
-      const supabase = getSupabaseAdmin();
-      const { error } = await supabase.storage.from(PHOTO_STORAGE_BUCKET).remove(paths);
-      if (error) throw error;
-    })(),
+    admin.storage.from(PHOTO_STORAGE_BUCKET).remove(paths).then(({ error }) => { if (error) throw error; }),
   ]);
-
-  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-  if (failures.length === results.length) {
-    return NextResponse.json({ error: failures[0].reason?.message || 'Falha ao remover arquivos' }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true });
+  if (storageResults.every((result) => result.status === 'rejected')) return NextResponse.json({ error: 'Falha ao remover arquivos' }, { status: 500 });
+  const { error: deleteError } = await admin.from('photos').delete().in('id', photoIds);
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  return NextResponse.json({ ok: true, deleted: photoIds.length });
 }

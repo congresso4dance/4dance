@@ -1,28 +1,13 @@
 "use server";
+import { securelyLoadAndSignPhotos } from '@/utils/secure-photo-signing';
 
-import { signPhotoUrls, signSingleUrl } from "@/utils/storage-helper";
+type PhotoInput = { id: string };
 
-/**
- * Server Action to sign multiple photo URLs.
- * Useful for client components that need to display photos from private buckets.
- */
-export async function getSignedUrlsAction(photos: any[]) {
-  try {
-    return await signPhotoUrls(photos);
-  } catch (error) {
-    console.error('Failed to sign URLs in action:', error);
-    return photos;
-  }
+export async function getSignedUrlsAction(photos: PhotoInput[]) {
+  return securelyLoadAndSignPhotos(photos.map((photo) => photo.id));
 }
 
-/**
- * Server Action to sign a single URL (e.g. cover_url).
- */
-export async function getSignedUrlAction(url: string | null | undefined) {
-  try {
-    return await signSingleUrl(url);
-  } catch (error) {
-    console.error('Failed to sign URL in action:', error);
-    return url || null;
-  }
+export async function getSignedUrlAction(photoId: string) {
+  const [photo] = await securelyLoadAndSignPhotos([photoId]);
+  return photo?.full_res_url ?? photo?.thumbnail_url ?? null;
 }

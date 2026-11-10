@@ -50,3 +50,6 @@ scan_*.js
 test_*.js
 find_*.js
 testsprite_tests/
+
+# Codex/MCP local config (contem API keys)
+.codex/

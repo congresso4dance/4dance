@@ -1,43 +1,38 @@
 import { NextResponse } from 'next/server';
-import { downloadFromR2 } from '@/utils/r2-storage';
+import { downloadFromR2, toR2Ref } from '@/utils/r2-storage';
+import { getSupabaseAdmin } from '@/utils/storage-helper';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Faz proxy de uma foto guardada no Cloudflare R2 pro navegador.
- *
- * Por que existe: o Cloudflare bloqueia (HTTP 503) requisições feitas
- * diretamente do navegador (via <img src>) pra API S3 do R2 usando URL
- * assinada — é uma proteção anti-hotlinking do próprio R2/Cloudflare que
- * afeta esse tipo de requisição de subrecurso. Buscando o arquivo aqui no
- * servidor (com as credenciais do R2, nunca expostas ao cliente) e
- * devolvendo os bytes direto, contornamos isso sem precisar tornar o bucket
- * público — o nível de acesso continua o mesmo de antes (só quem tem o link
- * da galeria vê a foto).
- *
- * GET /api/photos/r2-image?key=<chave do objeto no R2>
- */
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const key = searchParams.get('key');
+  const key = new URL(req.url).searchParams.get('key');
+  if (!key || key.includes('..') || key.startsWith('/')) return NextResponse.json({ error: 'key inválida' }, { status: 400 });
+  const admin = getSupabaseAdmin();
+  const ref = toR2Ref(key);
+  const { data: photo } = await admin.from('photos').select('id,event_id,thumbnail_url,full_res_url,events(is_paid)').or(`thumbnail_url.eq.${ref},full_res_url.eq.${ref}`).maybeSingle();
+  if (!photo) return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 });
 
-  if (!key) {
-    return NextResponse.json({ error: 'key é obrigatório' }, { status: 400 });
+  const event = photo.events as unknown as { is_paid?: boolean } | null;
+  let authorized = photo.thumbnail_url === ref || event?.is_paid === false;
+  if (!authorized) {
+    const supabaseUser = await createClient();
+    const { data: { user } } = await supabaseUser.auth.getUser();
+    if (user) {
+      const [{ data: profile }, { data: order }, { data: link }] = await Promise.all([
+        admin.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+        admin.from('orders').select('id').eq('user_id', user.id).eq('status', 'paid').contains('items', [photo.id]).limit(1).maybeSingle(),
+        admin.from('event_photographers').select('event_id').eq('event_id', photo.event_id).eq('photographer_id', user.id).maybeSingle(),
+      ]);
+      authorized = ['owner', 'admin', 'editor'].includes(profile?.role?.toLowerCase() ?? '') || Boolean(order) || Boolean(link);
+    }
   }
-
+  if (!authorized) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const { buffer, contentType } = await downloadFromR2(key);
-
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': contentType || 'image/jpeg',
-        // Imagens não mudam depois de enviadas — pode cachear no navegador/CDN por bastante tempo.
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
-      },
-    });
-  } catch (err: any) {
-    console.error(`Erro ao buscar imagem do R2 (key: ${key}):`, err);
+    return new NextResponse(new Uint8Array(buffer), { headers: { 'Content-Type': contentType || 'image/jpeg', 'Cache-Control': photo.thumbnail_url === ref ? 'public, max-age=86400' : 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
+  } catch {
     return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 });
   }
 }

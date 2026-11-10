@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import PurchaseEmail from '@/components/emails/PurchaseEmail';
-import { trackActivityInternal } from '@/app/actions/crm-actions';
+import { trackActivityInternal } from '@/utils/crm-internal';
 
 let stripeInstance: Stripe | null = null;
 function getStripe() {

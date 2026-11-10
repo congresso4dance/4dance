@@ -69,7 +69,7 @@ export default function ProducerDashboard() {
     }
 
     fetchProducerData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   if (loading) return <div className={styles.loading}>Carregando Portal do Produtor...</div>;

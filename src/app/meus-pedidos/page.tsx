@@ -86,7 +86,7 @@ export default function MyOrdersPage() {
       setLoading(false);
     }
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const handleDownload = async (photo: PurchasedPhoto) => {

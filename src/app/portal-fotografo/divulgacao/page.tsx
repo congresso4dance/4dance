@@ -177,7 +177,7 @@ export default function PhotographerDivulgacao() {
 
                 {/* QR Code preview + botões */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '1.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  { }
                   <img
                     src={qrUrl}
                     alt="QR Code"

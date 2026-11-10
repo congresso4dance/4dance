@@ -73,7 +73,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
     return () => {
       previewUrls.forEach(url => URL.revokeObjectURL(url));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -361,7 +361,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
           <div className={styles.selectedFaces}>
             {previewUrls.map((url, i) => (
               <div key={i} className={styles.faceTag}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                { }
                 <img src={url} alt="Face" className={styles.faceThumb} />
                 {referenceDescriptors.length > 1 && (
                   <button className={styles.removeFace} onClick={() => {
@@ -440,7 +440,7 @@ export default function GallerySearch({ photos, eventId, onFilter }: { photos: G
               <div className={styles.imageStage}>
                 {previewUrls.length > 0 ? (
                   <div className={styles.previewContainer}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    { }
                     <img src={previewUrls[previewUrls.length - 1]} alt="Scanning" className={styles.previewImage} />
                     <motion.div 
                       className={styles.scanLine}

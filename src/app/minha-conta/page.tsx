@@ -75,7 +75,7 @@ export default function MinhaContaPage() {
       }
     }
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   if (loading) {

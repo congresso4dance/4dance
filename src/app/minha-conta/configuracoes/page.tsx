@@ -50,7 +50,7 @@ export default function ConfiguracoesPage() {
       setLoading(false);
     }
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const handleSaveName = async (e: React.FormEvent) => {

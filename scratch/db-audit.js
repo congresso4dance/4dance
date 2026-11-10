@@ -1,9 +1,9 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  'https://pxvcgautbaobysvhyfzi.supabase.co',
-  '***REMOVED-SUPABASE-SERVICE-ROLE-KEY***'
-);
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!url || !serviceRoleKey) throw new Error('Variáveis Supabase obrigatórias');
+const supabase = createClient(url, serviceRoleKey);
 
 async function runAudit() {
   console.log('--- Database Audit ---');

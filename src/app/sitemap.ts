@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://4dance.com.br'
@@ -72,7 +72,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // de /eventos, sem crawl direto).
   let eventRoutes: MetadataRoute.Sitemap = []
   try {
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false } },
+    )
     const { data: events } = await supabase
       .from('events')
       .select('slug, event_date')

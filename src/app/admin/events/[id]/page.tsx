@@ -203,9 +203,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     await fetch('/api/admin/delete-photos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths: [photo.storage_path] }),
+      body: JSON.stringify({ photoIds: [photo.id] }),
     });
-    await supabase.from('photos').delete().eq('id', photo.id);
 
     await logAdminAction('DELETE_PHOTOS', { count: 1 }, id);
     setPhotos(photos.filter(p => p.id !== photo.id));
@@ -217,14 +216,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
     setSaving(true);
     const selectedPhotos = photos.filter(p => selectedIds.has(p.id));
-    const paths = selectedPhotos.map(p => p.storage_path);
-
     await fetch('/api/admin/delete-photos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths }),
+      body: JSON.stringify({ photoIds: selectedPhotos.map((photo) => photo.id) }),
     });
-    await supabase.from('photos').delete().in('id', Array.from(selectedIds));
 
     await logAdminAction('DELETE_PHOTOS', { count }, id);
     setPhotos(photos.filter(p => !selectedIds.has(p.id)));
@@ -236,12 +232,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const deleteEvent = async () => {
     if (!confirm('ATENÇÃO: Isso apagará o evento e TODAS as fotos permanentemente. Prosseguir?')) return;
 
-    const paths = photos.map(p => p.storage_path);
-    if (paths.length > 0) {
+    if (photos.length > 0) {
       await fetch('/api/admin/delete-photos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
+        body: JSON.stringify({ photoIds: photos.map((photo) => photo.id) }),
       });
     }
 

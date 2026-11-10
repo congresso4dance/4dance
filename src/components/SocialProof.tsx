@@ -11,7 +11,7 @@ function TestimonialAvatar({ author, url }: { author: string; url?: string | nul
   if (url && !error) {
     return (
       <div className={styles.avatarContainer}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        { }
         <img 
           src={url} 
           alt={author} 

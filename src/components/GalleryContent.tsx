@@ -202,7 +202,7 @@ export default function GalleryContent({ event, photos: initialPhotos, totalPhot
       window.clearTimeout(timer);
       window.removeEventListener("keydown", handleKeyDown);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [selectedIndex, allPhotos]);
   
   // INFINITE SCROLL

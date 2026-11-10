@@ -104,7 +104,7 @@ export default async function AdminTestimonialsPage({
               <div className={styles.cardTop}>
                 <div className={styles.avatar}>
                   {testimonial.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+                     
                     <img src={testimonial.avatar_url} alt={testimonial.author} />
                   ) : (
                     <span>{testimonial.author.charAt(0).toUpperCase()}</span>

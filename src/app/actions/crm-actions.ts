@@ -1,76 +1,17 @@
 "use server";
 
 import { createClient } from '@/utils/supabase/server';
+import type { ActivityType } from '@/utils/crm-internal';
 
-export type ActivityType = 'SCAN' | 'FAVORITE' | 'CART' | 'PURCHASE' | 'LOGIN';
-
-/**
- * 🔒 SEGURANÇA: Registra atividades no CRM com validação de identidade.
- */
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-/**
- * 🔒 INTERNO: Registra atividades no CRM sem validação de usuário (para Webhooks/Server)
- */
-export async function trackActivityInternal(
-    customerEmail: string, 
-    activityType: ActivityType, 
-    eventId?: string, 
-    metadata: any = {}
-  ) {
-    // Usar Service Role para garantir que o log seja gravado mesmo sem sessão (ex: Webhook)
-    const supabase = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    return await supabase
-      .from('crm_activities')
-      .insert({
-        customer_email: customerEmail,
-        activity_type: activityType,
-        event_id: eventId,
-        metadata: metadata
-      });
-}
-
-/**
- * 🔒 SEGURO: Registra atividades no CRM com validação de identidade (para Client-side)
- */
-export async function trackActivity(
-  customerEmail: string, 
-  activityType: ActivityType, 
-  eventId?: string, 
-  metadata: any = {}
-) {
+export async function trackActivity(customerEmail: string, activityType: ActivityType, eventId?: string, metadata: Record<string, unknown> = {}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-
-  // 🔒 SEGURANÇA: Apenas usuários logados podem registrar atividade via Client
-  if (!user) {
-    return { success: false, error: "Não autorizado" };
-  }
-
+  if (!user || user.email?.toLowerCase() !== customerEmail.trim().toLowerCase()) return { success: false, error: 'Não autorizado' };
   try {
-    const { error } = await supabase
-      .from('crm_activities')
-      .insert({
-        customer_email: customerEmail,
-        activity_type: activityType,
-        event_id: eventId,
-        metadata: { ...metadata, client_side: true },
-        user_id: user.id 
-      });
-
-    if (error) {
-      console.error("CRM Tracking Error:", error);
-      return { success: false, error };
-    }
-
+    const { error } = await supabase.from('crm_activities').insert({ customer_email: user.email, activity_type: activityType, event_id: eventId, metadata: { ...metadata, client_side: true }, user_id: user.id });
+    if (error) return { success: false, error: error.message };
     return { success: true };
-  } catch (err) {
-    console.error("CRM Tracking Exception:", err);
-    return { success: false, error: err };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Erro interno' };
   }
 }
-

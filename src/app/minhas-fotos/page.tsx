@@ -118,7 +118,7 @@ function MinhasFotosContent() {
       setLoading(false);
     }
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

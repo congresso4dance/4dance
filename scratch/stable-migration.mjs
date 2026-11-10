@@ -11,7 +11,8 @@ const env = Object.fromEntries(
 );
 
 const supabase = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
-const META_TOKEN = '***REMOVED-FACEBOOK-TOKEN***';
+const META_TOKEN = env['FACEBOOK_ACCESS_TOKEN'];
+if (!META_TOKEN) throw new Error('FACEBOOK_ACCESS_TOKEN obrigatório em .env.local');
 const PAGE_ID = '233933363708590';
 
 async function syncAlbumPhotos(albumId, event) {

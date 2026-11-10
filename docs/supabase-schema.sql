@@ -50,9 +50,9 @@ create policy "Allow public read on testimonials" on public.testimonials for sel
 
 -- Admin policies (assuming service role or specific uid)
 -- Note: Replace 'admin-uid' with actual admin uid if not using service role for panel
-create policy "Full access for authenticated admins" on public.events for all using (auth.role() = 'authenticated');
-create policy "Full access for authenticated admins" on public.photos for all using (auth.role() = 'authenticated');
-create policy "Full access for authenticated admins" on public.testimonials for all using (auth.role() = 'authenticated');
+create policy "Full access for authenticated admins" on public.events for all using (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin'))) with check (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin')));
+create policy "Full access for authenticated admins" on public.photos for all using (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin'))) with check (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin')));
+create policy "Full access for authenticated admins" on public.testimonials for all using (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin'))) with check (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin')));
 
 -- 6. Storage Buckets (Run via Supabase Dashboard or API)
 -- Need to manually create bucket 'event-photos' and 'assets'
@@ -80,10 +80,10 @@ alter table public.leads enable row level security;
 alter table public.event_alerts enable row level security;
 
 create policy "Allow public insert on leads" on public.leads for insert with check (true);
-create policy "Allow admin read on leads" on public.leads for select using (auth.role() = 'authenticated');
+create policy "Allow admin read on leads" on public.leads for select using (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin')));
 
 create policy "Allow public insert on alerts" on public.event_alerts for insert with check (true);
-create policy "Allow admin read on alerts" on public.event_alerts for select using (auth.role() = 'authenticated');
+create policy "Allow admin read on alerts" on public.event_alerts for select using (exists (select 1 from public.profiles p where p.id = auth.uid() and lower(p.role::text) in ('owner','admin')));
 
 -- 8. Face Recognition Vector Support
 CREATE TABLE IF NOT EXISTS public.photo_faces (

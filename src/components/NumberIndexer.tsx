@@ -17,7 +17,7 @@ export default function NumberIndexer({ eventId }: NumberIndexerProps) {
 
   useEffect(() => {
     fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [eventId]);
 
   async function fetchStats() {
